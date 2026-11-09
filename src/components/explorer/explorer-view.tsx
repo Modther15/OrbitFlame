@@ -271,7 +271,7 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                             onClick={() => toggleCompare(record.id)}
                             className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tracking-wider uppercase transition-all ${
                               isCompared
-                                ? "border-transparent bg-[linear-gradient(135deg,#ff5500,#f59e0b)] text-white"
+                                ? "border-transparent bg-[linear-gradient(135deg,#ff5500,#f59e0b)] !text-white"
                                 : "border-[#dfe6f2] bg-white text-[#071126] hover:border-[#ff5500]"
                             }`}
                           >
@@ -279,7 +279,7 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                           </button>
                           <Link
                             href={`/investigations/${record.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#071126_0%,#0b3d91_100%)] px-4 py-2 text-xs font-semibold tracking-wider text-white uppercase transition-transform hover:-translate-y-0.5"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#071126_0%,#0b3d91_100%)] px-4 py-2 text-xs font-semibold tracking-wider !text-white uppercase transition-transform hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,#0b3d91_0%,#ff5500_100%)]"
                           >
                             Open details <ArrowUpRight size={13} />
                           </Link>

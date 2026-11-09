@@ -13,41 +13,43 @@
   --radius-panel: 1.25rem;
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-html {
-  min-height: 100%;
-  background: var(--flame-void);
-  scroll-behavior: smooth;
-}
+  html {
+    min-height: 100%;
+    background: var(--flame-void);
+    scroll-behavior: smooth;
+  }
 
-body {
-  min-height: 100vh;
-  margin: 0;
-  color: var(--flame-ink);
-  background: var(--flame-void);
-  font-family: var(--font-display), "Outfit", "Segoe UI", sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
+  body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--flame-ink);
+    background: var(--flame-void);
+    font-family: var(--font-display), "Outfit", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 
-button,
-a,
-input,
-select {
-  font: inherit;
-}
+  button,
+  a,
+  input,
+  select {
+    font: inherit;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--flame-orange);
-  outline-offset: 3px;
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--flame-orange);
+    outline-offset: 3px;
+  }
 }
 
 ::selection {

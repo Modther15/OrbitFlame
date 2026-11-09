@@ -32,7 +32,7 @@ export function ChamberInspector() {
       </ul>
 
       <div className="lp-inspector-stage">
-        <ParticleMorph className="lp-inspector-canvas" shapes={CHAMBER} count={5200} pointSize={8} autoRotate={false} rotationY={pin.angle} cameraZ={4.4} label="Conceptual cylindrical chamber made of particles. Not a NASA hardware model." />
+        <ParticleMorph className="lp-inspector-canvas" shapes={CHAMBER} count={5200} pointSize={8} autoRotate={false} rotationY={pin.angle} cameraZ={5.0} label="Conceptual cylindrical chamber made of particles. Not a NASA hardware model." />
         {PINS.map((p, i) => (
           <button
             key={p.id}

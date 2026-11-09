@@ -110,19 +110,19 @@ function buildShape(key: ShapeKey, n: number): Float32Array {
           const len = r() * 2 - 1;
           const ring = Math.round(len * 6) / 6;
           const onRing = r() < 0.45;
-          x = (onRing ? ring : len) * 1.35;
-          y = Math.cos(th) * 0.82;
-          z = Math.sin(th) * 0.82;
+          x = (onRing ? ring : len) * 1.12;
+          y = Math.cos(th) * 0.72;
+          z = Math.sin(th) * 0.72;
         } else if (sel < 0.85) {
           const th = r() * Math.PI * 2;
-          const rr = 0.82 + r() * 0.28;
+          const rr = 0.72 + r() * 0.22;
           const side = r() < 0.5 ? -1 : 1;
-          x = side * 1.35;
+          x = side * 1.12;
           y = Math.cos(th) * rr;
           z = Math.sin(th) * rr;
         } else {
-          x = (r() * 2 - 1) * 0.9;
-          y = (r() * 2 - 1) * 0.35;
+          x = (r() * 2 - 1) * 0.78;
+          y = (r() * 2 - 1) * 0.3;
           z = gauss(r) * 0.02;
         }
         break;
@@ -230,7 +230,21 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
       size[i] = 0.55 + r() * 0.9;
       phase[i] = r() * Math.PI * 2;
     }
-    return { targets, colors, delay, scatter, size, phase, initialPos: new Float32Array(targets[0]), initialCol: new Float32Array(colors[0]) };
+    const livePos = new Float32Array(targets[0]);
+    const liveCol = new Float32Array(colors[0]);
+    return {
+      targets,
+      colors,
+      delay,
+      scatter,
+      size,
+      phase,
+      livePos,
+      liveCol,
+      posArgs: [livePos, 3] as [Float32Array, number],
+      colArgs: [liveCol, 3] as [Float32Array, number],
+      sizeArgs: [size, 1] as [Float32Array, number],
+    };
   }, [shapes, count]);
 
   const material = useMemo(
@@ -251,17 +265,24 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
   );
   useEffect(() => () => material.dispose(), [material]);
 
-  const morph = useRef({ from: new Float32Array(data.initialPos), fromCol: new Float32Array(data.initialCol), to: 0, start: -10 });
+  const morph = useRef({
+    from: new Float32Array(data.livePos),
+    fromCol: new Float32Array(data.liveCol),
+    to: 0,
+    start: -10,
+  });
   const clockRef = useRef(0);
 
   useEffect(() => {
     const geo = pointsRef.current?.geometry;
     if (!geo) return;
+    const nextTo = Math.min(active, data.targets.length - 1);
+    if (morph.current.to === nextTo) return;
     const pos = geo.getAttribute("position") as BufferAttribute;
     const col = geo.getAttribute("aColor") as BufferAttribute;
-    morph.current.from = new Float32Array(pos.array as Float32Array);
-    morph.current.fromCol = new Float32Array(col.array as Float32Array);
-    morph.current.to = Math.min(active, data.targets.length - 1);
+    morph.current.from.set(pos.array as Float32Array);
+    morph.current.fromCol.set(col.array as Float32Array);
+    morph.current.to = nextTo;
     morph.current.start = animate ? clockRef.current : -10;
   }, [active, animate, data.targets.length]);
 
@@ -289,9 +310,12 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
       const bump = Math.sin(local * Math.PI) * 0.42;
       const idle = animate ? 0.012 : 0;
       const ph = data.phase[i];
-      p[o] = from[o] + (target[o] - from[o]) * e + data.scatter[o] * bump + Math.sin(time * 0.9 + ph) * idle;
-      p[o + 1] = from[o + 1] + (target[o + 1] - from[o + 1]) * e + data.scatter[o + 1] * bump + Math.cos(time * 0.8 + ph) * idle;
-      p[o + 2] = from[o + 2] + (target[o + 2] - from[o + 2]) * e + data.scatter[o + 2] * bump;
+      const basePx = from[o] + (target[o] - from[o]) * e + data.scatter[o] * bump;
+      const basePy = from[o + 1] + (target[o + 1] - from[o + 1]) * e + data.scatter[o + 1] * bump;
+      const basePz = from[o + 2] + (target[o + 2] - from[o + 2]) * e + data.scatter[o + 2] * bump;
+      p[o] = basePx + Math.sin(time * 0.9 + ph) * idle;
+      p[o + 1] = basePy + Math.cos(time * 0.8 + ph) * idle;
+      p[o + 2] = basePz;
       c[o] = fromCol[o] + (tCol[o] - fromCol[o]) * e;
       c[o + 1] = fromCol[o + 1] + (tCol[o + 1] - fromCol[o + 1]) * e;
       c[o + 2] = fromCol[o + 2] + (tCol[o + 2] - fromCol[o + 2]) * e;
@@ -315,9 +339,9 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
     <group ref={groupRef}>
       <points ref={pointsRef} material={material} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(data.initialPos), 3]} />
-          <bufferAttribute attach="attributes-aColor" args={[new Float32Array(data.initialCol), 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[data.size, 1]} />
+          <bufferAttribute attach="attributes-position" args={data.posArgs} />
+          <bufferAttribute attach="attributes-aColor" args={data.colArgs} />
+          <bufferAttribute attach="attributes-aSize" args={data.sizeArgs} />
         </bufferGeometry>
       </points>
     </group>

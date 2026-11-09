@@ -40,7 +40,7 @@ export function Sidebar() {
               aria-current={active ? "page" : undefined}
               className={`flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium transition-all ${
                 active
-                  ? "bg-[linear-gradient(135deg,#071126_0%,#0b3d91_100%)] text-white shadow-[0_10px_24px_-12px_rgba(11,61,145,0.55)]"
+                  ? "bg-[linear-gradient(135deg,#071126_0%,#0b3d91_100%)] !text-white shadow-[0_10px_24px_-12px_rgba(11,61,145,0.55)]"
                   : "text-[#5b6b88] hover:bg-[#edf2fa] hover:text-[#071126]"
               }`}
             >
