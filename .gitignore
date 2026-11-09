@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# local tooling and generated caches
+*.tsbuildinfo
+work/
+backup/
+outputs/
+
+# local environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# large local reference assets (not needed to run the app)
+*.mp4
+*.mov
+*.webm
+
+# logs and OS files
+*.log
+.DS_Store
+Thumbs.db
