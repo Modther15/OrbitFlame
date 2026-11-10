@@ -15,10 +15,10 @@ export function StatusBadge({ status }: { status: Status }) {
     <span
       className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-3.5 py-1 font-mono text-[10px] font-semibold tracking-[.12em] ${
         verified
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+          ? "border-emerald-400/35 bg-emerald-400/15 text-emerald-300"
           : status === "demo"
-            ? "border-amber-500/30 bg-amber-500/10 text-amber-800"
-            : "border-slate-200 bg-white text-slate-600"
+            ? "border-amber-400/35 bg-amber-400/15 text-amber-300"
+            : "border-white/15 bg-white/10 text-[#d8e6fa]"
       }`}
     >
       {verified ? <ShieldCheck size={13} aria-hidden="true" /> : <CircleDot size={13} aria-hidden="true" />}

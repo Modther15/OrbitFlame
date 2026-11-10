@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: light;
-  --flame-void: #f6f9fd;
-  --flame-surface: #ffffff;
-  --flame-ink: #071126;
-  --flame-muted: #5b6b88;
-  --flame-border: #dfe6f2;
-  --flame-violet: #0b3d91;
+  color-scheme: dark;
+  --flame-void: #050b1b;
+  --flame-surface: #0b1730;
+  --flame-ink: #f4f8ff;
+  --flame-muted: #93a8c9;
+  --flame-border: rgba(54, 169, 255, 0.16);
+  --flame-violet: #36a9ff;
   --flame-orange: #ff5500;
-  --telemetry-cyan: #1785f2;
+  --telemetry-cyan: #36a9ff;
   --radius-panel: 1.25rem;
 }
 
@@ -20,7 +20,7 @@
 
   html {
     min-height: 100%;
-    background: var(--flame-void);
+    background: #050b1b;
     scroll-behavior: smooth;
   }
 
@@ -28,7 +28,7 @@
     min-height: 100vh;
     margin: 0;
     color: var(--flame-ink);
-    background: var(--flame-void);
+    background: #050b1b;
     font-family: var(--font-display), "Outfit", "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -54,7 +54,7 @@
 
 ::selection {
   color: #ffffff;
-  background: var(--flame-violet);
+  background: #102b50;
 }
 
 .mono {
@@ -62,10 +62,12 @@
 }
 
 .panel {
-  border: 1px solid var(--flame-border);
+  border: 1px solid rgba(54, 169, 255, 0.18);
   border-radius: var(--radius-panel);
-  background: var(--flame-surface);
-  box-shadow: 0 20px 50px -36px rgb(11 61 145 / 18%);
+  background: rgba(11, 23, 48, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 20px 50px -36px rgb(5 11 27 / 70%);
 }
 
 .eyebrow {
@@ -76,6 +78,123 @@
   text-transform: uppercase;
 }
 
+/* ==========================================================================
+   OrbitFlame Cosmic Navigation Transition (Homepage <-> Explore)
+   ========================================================================== */
+.cosmic-transit-overlay {
+  opacity: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(54, 169, 255, 0.14) 0%, rgba(11, 23, 48, 0.42) 55%, rgba(4, 9, 22, 0.88) 100%);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 260ms ease;
+  pointer-events: none;
+}
+
+body.cosmic-warp-forward .cosmic-transit-overlay {
+  opacity: 1;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+body.cosmic-warp-reverse .cosmic-transit-overlay {
+  opacity: 1;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Homepage Warp reaction on forward transition to Explore */
+body.cosmic-warp-forward .lp-space-bg {
+  transform: scale(1.15);
+  filter: brightness(1.22) contrast(1.06);
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), filter 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.cosmic-warp-forward .lp > main,
+body.cosmic-warp-forward .lp > header,
+body.cosmic-warp-forward .lp > footer {
+  opacity: 0;
+  transform: scale(0.985) translateY(-6px);
+  transition: opacity 240ms cubic-bezier(0.4, 0, 0.2, 1), transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Explore Warp reaction on reverse transition back to Homepage */
+body.cosmic-warp-reverse .explore-page-shell {
+  opacity: 0;
+  transform: scale(1.015) translateY(6px);
+  transition: opacity 240ms cubic-bezier(0.4, 0, 0.2, 1), transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.cosmic-warp-reverse .explore-space-bg {
+  transform: scale(0.96);
+  opacity: 0.65;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease;
+}
+
+/* Explore Staggered Entrance Reveal */
+@keyframes cosmicFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cosmicSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.cosmic-reveal-stage .explore-sidebar {
+  animation: cosmicSlideInLeft 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cosmic-reveal-stage .explore-header {
+  animation: cosmicFadeSlideIn 280ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+}
+
+.cosmic-reveal-stage .explore-controls {
+  animation: cosmicFadeSlideIn 280ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+
+.cosmic-reveal-stage .explore-card-item {
+  animation: cosmicFadeSlideIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cosmic-reveal-stage .explore-card-item:nth-child(1) { animation-delay: 110ms; }
+.cosmic-reveal-stage .explore-card-item:nth-child(2) { animation-delay: 150ms; }
+.cosmic-reveal-stage .explore-card-item:nth-child(3) { animation-delay: 190ms; }
+.cosmic-reveal-stage .explore-card-item:nth-child(4) { animation-delay: 230ms; }
+.cosmic-reveal-stage .explore-card-item:nth-child(5) { animation-delay: 270ms; }
+
+/* Twinkle keyframe for Explore stars */
+@keyframes exploreStarTwinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.15);
+  }
+}
+
+.explore-twinkle {
+  animation-name: exploreStarTwinkle;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -84,5 +203,11 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .cosmic-transit-overlay,
+  .explore-twinkle,
+  .cosmic-reveal-stage * {
+    animation: none !important;
+    transition: none !important;
   }
 }

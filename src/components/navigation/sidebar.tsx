@@ -21,14 +21,14 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="border-b border-[#dfe6f2] bg-white/85 px-5 py-4 backdrop-blur-md lg:min-h-screen lg:border-b-0 lg:border-r lg:px-6 lg:py-7">
-      <Link href="/" className="inline-flex items-center gap-2.5 text-[17px] font-bold tracking-[-0.02em] text-[#071126]">
-        <span className="relative h-6 w-6 rounded-full bg-[conic-gradient(from_200deg,#0b3d91,#1785f2,#ff5500,#f59e0b,#0b3d91)] after:absolute after:inset-[6px] after:rounded-full after:bg-white" />
+    <aside className="explore-sidebar relative z-10 border-b border-white/10 bg-[#060e22]/85 px-5 py-4 text-[#f4f8ff] backdrop-blur-md lg:min-h-screen lg:border-b-0 lg:border-r lg:border-white/10 lg:px-6 lg:py-7">
+      <Link href="/" className="inline-flex items-center gap-2.5 text-[17px] font-bold tracking-[-0.02em] text-[#f4f8ff]">
+        <span className="relative h-6 w-6 rounded-full bg-[conic-gradient(from_200deg,#0b3d91,#36a9ff,#ff5500,#f59e0b,#0b3d91)] after:absolute after:inset-[6px] after:rounded-full after:bg-[#060e22]" />
         <span>
           Orbit<b className="bg-[linear-gradient(90deg,#ff5500,#f59e0b)] bg-clip-text font-bold text-transparent">Flame</b>
         </span>
       </Link>
-      <p className="mt-1 font-mono text-[9px] tracking-[.18em] text-[#5b6b88]">COMBUSTION INTELLIGENCE</p>
+      <p className="mt-1 font-mono text-[9px] tracking-[.18em] text-[#7d95b8]">COMBUSTION INTELLIGENCE</p>
 
       <nav aria-label="Primary navigation" className="mt-7 flex gap-1.5 overflow-x-auto lg:flex-col">
         {primary.map(([label, href, Icon]) => {
@@ -40,39 +40,39 @@ export function Sidebar() {
               aria-current={active ? "page" : undefined}
               className={`flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium transition-all ${
                 active
-                  ? "bg-[linear-gradient(135deg,#071126_0%,#0b3d91_100%)] !text-white shadow-[0_10px_24px_-12px_rgba(11,61,145,0.55)]"
-                  : "text-[#5b6b88] hover:bg-[#edf2fa] hover:text-[#071126]"
+                  ? "border border-[#36a9ff]/35 bg-[linear-gradient(135deg,#0a1f46_0%,#13386e_100%)] !text-white shadow-[0_8px_20px_-6px_rgba(54,169,255,0.4)]"
+                  : "text-[#9cb2d2] hover:bg-white/[0.06] hover:text-[#f4f8ff]"
               }`}
             >
-              <Icon size={16} aria-hidden="true" className={active ? "text-[#ff8c38]" : ""} />
+              <Icon size={16} aria-hidden="true" className={active ? "text-[#ff8a32]" : "text-[#7d95b8]"} />
               {label}
             </Link>
           );
         })}
 
-        <p className="hidden px-3.5 pb-1 pt-5 font-mono text-[9.5px] font-semibold tracking-[.18em] text-[#8c9bbd] lg:block">
+        <p className="hidden px-3.5 pb-1 pt-5 font-mono text-[9.5px] font-semibold tracking-[.18em] text-[#6a84a9] lg:block">
           RESEARCH MODULES
         </p>
         {research.map(([label, href, Icon]) => (
           <Link
             key={label}
             href={href}
-            className="flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium text-[#5b6b88] transition-colors hover:bg-[#edf2fa] hover:text-[#071126]"
+            className="flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium text-[#9cb2d2] transition-colors hover:bg-white/[0.06] hover:text-[#f4f8ff]"
           >
-            <Icon size={16} aria-hidden="true" />
+            <Icon size={16} aria-hidden="true" className="text-[#7d95b8]" />
             {label}
           </Link>
         ))}
       </nav>
 
-      <div className="mt-8 hidden border-t border-[#dfe6f2] pt-5 lg:block">
-        <Link href="/#programs" className="flex items-center gap-3 rounded-lg px-3.5 py-2 text-xs font-medium text-[#5b6b88] hover:text-[#071126]">
+      <div className="mt-8 hidden border-t border-white/10 pt-5 lg:block">
+        <Link href="/#programs" className="flex items-center gap-3 rounded-lg px-3.5 py-2 text-xs font-medium text-[#8ea5c7] hover:text-white">
           <Archive size={15} /> Source Catalogue
         </Link>
-        <Link href="/#pipeline" className="flex items-center gap-3 rounded-lg px-3.5 py-2 text-xs font-medium text-[#5b6b88] hover:text-[#071126]">
+        <Link href="/#pipeline" className="flex items-center gap-3 rounded-lg px-3.5 py-2 text-xs font-medium text-[#8ea5c7] hover:text-white">
           <BookOpenText size={15} /> Methodology
         </Link>
-        <Link href="/#anatomy" className="flex items-center gap-3 rounded-lg px-3.5 py-2 text-xs font-medium text-[#5b6b88] hover:text-[#071126]">
+        <Link href="/#anatomy" className="flex items-center gap-3 rounded-lg px-3.5 py-2 text-xs font-medium text-[#8ea5c7] hover:text-white">
           <CircleHelp size={15} /> Evidence Rules
         </Link>
       </div>

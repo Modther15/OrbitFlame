@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { ParticleMorph, type ShapeKey } from "./particle-morph";
 
 const CHAMBER: ShapeKey[] = ["chamber"];
@@ -17,13 +17,25 @@ const PINS = [
 export function ChamberInspector() {
   const [active, setActive] = useState(0);
   const pin = PINS[active];
+  const go = (i: number) => setActive((i + PINS.length) % PINS.length);
+  const px = parseFloat(pin.pos.left);
+  const py = parseFloat(pin.pos.top);
+
+  // Arrow keys move between attributes inside the list (roving focus).
+  const onListKey = (e: KeyboardEvent<HTMLUListElement>) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const n = (active + (e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : -1) + PINS.length) % PINS.length;
+    setActive(n);
+    e.currentTarget.querySelectorAll("button")[n]?.focus();
+  };
 
   return (
     <div className="lp-inspector">
-      <ul className="lp-inspector-list" aria-label="Experiment attributes">
+      <ul className="lp-inspector-list" aria-label="Experiment attributes" onKeyDown={onListKey}>
         {PINS.map((p, i) => (
           <li key={p.id}>
-            <button type="button" className={i === active ? "is-active" : ""} onClick={() => setActive(i)}>
+            <button type="button" className={i === active ? "is-active" : ""} aria-pressed={i === active} onClick={() => setActive(i)}>
               <span className="lp-mono">{p.id}</span>
               {p.title}
             </button>
@@ -33,6 +45,11 @@ export function ChamberInspector() {
 
       <div className="lp-inspector-stage">
         <ParticleMorph className="lp-inspector-canvas" shapes={CHAMBER} count={5200} pointSize={8} autoRotate={false} rotationY={pin.angle} cameraZ={5.0} label="Conceptual cylindrical chamber made of particles. Not a NASA hardware model." />
+        {/* Leader line: ties the selected hotspot to the spec card on the right (decorative). */}
+        <svg className="lp-leader" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path key={pin.id} d={`M${px} ${py} C ${Math.max(px + 10, 86)} ${py}, 90 50, 100 50`} pathLength={100} />
+        </svg>
+        <span className="lp-leader-end" aria-hidden="true" />
         {PINS.map((p, i) => (
           <button
             key={p.id}
@@ -42,6 +59,7 @@ export function ChamberInspector() {
             onClick={() => setActive(i)}
             aria-label={`${p.id} ${p.title}`}
             aria-pressed={i === active}
+            data-label={p.title}
           >
             {p.id}
           </button>
@@ -49,11 +67,20 @@ export function ChamberInspector() {
         <span className="lp-mono lp-caption lp-inspector-caption">Conceptual chamber — not a NASA hardware model</span>
       </div>
 
-      <article className="lp-spec-card" aria-live="polite" key={pin.id}>
-        <span className="lp-mono lp-spec-code">{`PIN ${pin.id} // ${pin.title.toUpperCase()}`}</span>
-        <h3>{pin.title}</h3>
-        <p>{pin.text}</p>
-        <div className="lp-spec-rule lp-mono"><CheckCircle2 size={15} /> {pin.rule}</div>
+      <article className="lp-spec-card">
+        <div className="lp-spec-top">
+          <span className="lp-mono lp-spec-code" aria-live="polite">{`PIN ${pin.id} // ${pin.title.toUpperCase()}`}</span>
+          <span className="lp-spec-step">
+            <button type="button" onClick={() => go(active - 1)} aria-label="Previous attribute"><ChevronLeft size={14} /></button>
+            <span className="lp-mono">{`${pin.id} / ${String(PINS.length).padStart(2, "0")}`}</span>
+            <button type="button" onClick={() => go(active + 1)} aria-label="Next attribute"><ChevronRight size={14} /></button>
+          </span>
+        </div>
+        <div className="lp-spec-body" key={pin.id}>
+          <h3>{pin.title}</h3>
+          <p>{pin.text}</p>
+          <div className="lp-spec-rule lp-mono"><CheckCircle2 size={15} /> {pin.rule}</div>
+        </div>
         <Link href="/explore" className="lp-btn lp-btn--light lp-btn--block">Filter investigations <ArrowUpRight size={14} /></Link>
       </article>
     </div>

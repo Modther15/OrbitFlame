@@ -5,23 +5,28 @@ import { useEffect, useState } from "react";
 import { ParticleMorph, type ShapeKey, useReducedMotion } from "./particle-morph";
 
 const CORPUS: ShapeKey[] = ["corpus"];
+const CYCLE_MS = 2800;
 
+// `rules` describe how the pipeline is designed to behave (PRD requirements),
+// not documents or results that are currently indexed.
 const STAGES = [
-  { code: "STAGE 01 // INGEST", title: "Source documents & data files", text: "Checksums, page and row locators, and original units are preserved on import.", Icon: Cpu },
-  { code: "STAGE 02 // RETRIEVE", title: "Hybrid search & explainable ranking", text: "Structured filters plus semantic retrieval. Every score shows its dimension-by-dimension breakdown.", Icon: Layers },
-  { code: "STAGE 03 // VERIFY", title: "Citation-checked answers", text: "Claims without a resolvable source span are removed or returned as unknown.", Icon: ShieldCheck },
+  { code: "STAGE 01 // INGEST", title: "Source documents & data files", text: "Checksums, page and row locators, and original units are preserved on import.", rules: ["File checksum recorded", "Page & row locators", "Original units kept"], Icon: Cpu },
+  { code: "STAGE 02 // RETRIEVE", title: "Hybrid search & explainable ranking", text: "Structured filters plus semantic retrieval. Every score shows its dimension-by-dimension breakdown.", rules: ["Structured filters", "Semantic retrieval", "Per-dimension score"], Icon: Layers },
+  { code: "STAGE 03 // VERIFY", title: "Citation-checked answers", text: "Claims without a resolvable source span are removed or returned as unknown.", rules: ["Span-level citation check", "Unsupported claims removed", "Unknown is a valid answer"], Icon: ShieldCheck },
 ];
 
 export function EvidencePipeline({ documents }: { documents: number }) {
   const [active, setActive] = useState(0);
-  const [hover, setHover] = useState(false);
+  const [paused, setPaused] = useState(false);
   const reduced = useReducedMotion();
+  const cycling = !paused && !reduced;
 
+  // One timeout per step keeps the progress bar and the stage change in sync.
   useEffect(() => {
-    if (hover || reduced) return;
-    const id = window.setInterval(() => setActive((v) => (v + 1) % STAGES.length), 2800);
-    return () => window.clearInterval(id);
-  }, [hover, reduced]);
+    if (!cycling) return;
+    const id = window.setTimeout(() => setActive((v) => (v + 1) % STAGES.length), CYCLE_MS);
+    return () => window.clearTimeout(id);
+  }, [active, cycling]);
 
   return (
     <div className="lp-pipeline">
@@ -51,19 +56,37 @@ export function EvidencePipeline({ documents }: { documents: number }) {
         <circle cx="0" cy="180" r="4" className="wire-node is-on" />
       </svg>
 
-      <ol className="lp-stages" onMouseLeave={() => setHover(false)}>
-        {STAGES.map(({ code, title, text, Icon }, i) => (
-          <li key={code} className={i === active ? "is-active" : ""} onMouseEnter={() => { setHover(true); setActive(i); }}>
-            <button type="button" onFocus={() => setActive(i)} aria-pressed={i === active}>
-              <span className="lp-stage-icon"><Icon size={17} /></span>
-              <span className="lp-stage-body">
-                <span className="lp-mono lp-stage-code">{code}</span>
-                <b>{title}</b>
-                <span className="lp-stage-text">{text}</span>
-              </span>
-            </button>
-          </li>
-        ))}
+      <ol className="lp-stages" onPointerLeave={(e) => { if (e.pointerType === "mouse") setPaused(false); }}>
+        {STAGES.map(({ code, title, text, rules, Icon }, i) => {
+          const isActive = i === active;
+          return (
+            <li key={code} className={isActive ? "is-active" : ""} onPointerEnter={(e) => { if (e.pointerType === "mouse") { setPaused(true); setActive(i); } }}>
+              <button
+                type="button"
+                onFocus={() => setActive(i)}
+                onClick={() => { setActive(i); setPaused(true); }}
+                aria-pressed={isActive}
+                aria-expanded={isActive}
+              >
+                <span className="lp-stage-icon"><Icon size={17} /></span>
+                <span className="lp-stage-body">
+                  <span className="lp-mono lp-stage-code">{code}</span>
+                  <b>{title}</b>
+                  <span className="lp-stage-text">{text}</span>
+                  <span className="lp-stage-more" aria-hidden={!isActive}>
+                    <span>
+                      <span className="lp-mono lp-stage-more-label">{"Design rules // demo mode"}</span>
+                      <span className="lp-stage-rules">
+                        {rules.map((r) => <span key={r} className="lp-mono">{r}</span>)}
+                      </span>
+                    </span>
+                  </span>
+                </span>
+                {isActive && cycling && <span className="lp-stage-timer" key={`t-${active}`} aria-hidden="true" style={{ animationDuration: `${CYCLE_MS}ms` }} />}
+              </button>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

@@ -1,0 +1,124 @@
+{
+  "manifestVersion": "1.0.0",
+  "project": "OrbitFlame — Cinematic Deep Space Environment",
+  "generatedAt": "2026-11-10",
+  "evaluatedSuppliedAssets": [
+    {
+      "fileName": "Cat's Eye Nebula — Hubble & Euclid.jpg",
+      "source": "Supplied in Refernce Assets (ESA / Hubble & Euclid / NASA)",
+      "format": "JPEG (1536×842, 290 KB)",
+      "evaluation": "High sharpness, authentic deep-space astrophotography with crisp multi-depth starfield, diffraction spikes, and a blue/orange planetary nebula core.",
+      "decision": "SELECTED & OPTIMIZED",
+      "optimizedOutput": "/space/cats-eye-nebula.webp (277 KB, WebP)"
+    },
+    {
+      "fileName": "Orion Nebula — NASA Hubble.jpg",
+      "source": "Supplied in Refernce Assets (NASA / STScI Hubble WFPC2)",
+      "format": "JPEG (2000×1433, 354 KB)",
+      "evaluation": "Authentic blue/orange ionized gas color palette, but exhibits visible 1990s CCD sensor grain and a black bottom-right mosaic seam when used sharp.",
+      "decision": "SELECTED FOR SOFT ATMOSPHERIC NEBULA WASH (supplemented with JWST Carina Nebula for sharp high-detail dust)",
+      "optimizedOutput": "/space/orion-nebula.webp (134 KB, WebP)"
+    },
+    {
+      "fileName": "International Space Station (ISS) (A).glb",
+      "source": "Supplied in Refernce Assets (NASA 3D Resources)",
+      "format": "GLB v2 (39.7 KB, 7,565 vertices, 6 untextured flat materials)",
+      "evaluation": "Very low-poly untextured block model with flat-shaded grey cylinders and solid blue rectangles; lacks realistic solar array cells, truss lattice, and thermal blankets.",
+      "decision": "REPLACED for visual rendering with NASA's high-resolution textured ISS (C) asset while retaining iss-a.glb in /space/models/iss-a.glb for reference.",
+      "optimizedOutput": "/space/craft-iss.webp (151 KB, transparent WebP from NASA ISS (C) High-Res)"
+    },
+    {
+      "fileName": "Tracking and Data Relay Satellites (TDRS) (C) (right antenna).glb",
+      "source": "Supplied in Refernce Assets (NASA 3D Resources)",
+      "format": "GLB v2 (2.91 MB, 6,684 vertices, 2 materials, 3 embedded textures)",
+      "evaluation": "Partial sub-component containing only the detached right parabolic dish and feed cone (missing spacecraft bus, solar wings, and second antenna).",
+      "decision": "REPLACED with the complete NASA TDRS (C) and TDRS (B) full spacecraft models from NASA 3D Resources.",
+      "optimizedOutput": "/space/craft-tdrs-c.webp (44 KB, WebP) + /space/models/tdrs-c.glb (2.12 MB)"
+    }
+  ],
+  "productionAssets": [
+    {
+      "name": "JWST Carina Nebula ('Cosmic Cliffs' NIRCam)",
+      "file": "/space/carina-nebula.webp",
+      "source": "NASA Image and Video Library (NASA ID: carina_nebula — NASA, ESA, CSA, STScI)",
+      "url": "https://images.nasa.gov/details/carina_nebula",
+      "format": "WebP (1920×1113, 409 KB)",
+      "intendedUse": "Layer B (Primary photorealistic orange/blue nebula ridge & cosmic dust clouds)",
+      "license": "Public Domain — NASA/STScI Media Usage Guidelines",
+      "optimizationStatus": "Converted from NASA large JPEG to WebP (q=0.84)"
+    },
+    {
+      "name": "Cat's Eye Nebula (NGC 6543 — Hubble & Euclid)",
+      "file": "/space/cats-eye-nebula.webp",
+      "source": "ESA/Hubble & NASA (Supplied Reference Asset)",
+      "url": "https://esahubble.org/images/heic2409a/",
+      "format": "WebP (1536×842, 277 KB)",
+      "intendedUse": "Layer A & Layer B (Deep-space astrophotography field, distant galaxies, and mid-scroll planetary nebula core)",
+      "license": "CC BY 4.0 / NASA & ESA Public Information",
+      "optimizationStatus": "Converted from supplied JPEG to WebP (q=0.84)"
+    },
+    {
+      "name": "Orion Nebula (M42 — NASA Hubble)",
+      "file": "/space/orion-nebula.webp",
+      "source": "NASA / STScI Hubble Space Telescope (Supplied Reference Asset)",
+      "url": "https://images.nasa.gov/",
+      "format": "WebP (1600×1146, 134 KB)",
+      "intendedUse": "Layer B (Soft atmospheric blue/amber gas cloud wash with edge feathering)",
+      "license": "Public Domain — NASA Media Usage Guidelines",
+      "optimizationStatus": "Resized to 1600w and compressed to WebP (q=0.82, 62% size reduction)"
+    },
+    {
+      "name": "Tracking and Data Relay Satellite — TDRS (C) Full Spacecraft",
+      "file": "/space/craft-tdrs-c.webp",
+      "glbFile": "/space/models/tdrs-c.glb",
+      "source": "NASA 3D Resources — Tracking and Data Relay Satellites (TDRS) (C)",
+      "url": "https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20(TDRS)%20(C)",
+      "format": "Transparent WebP (960×540, 44 KB) + GLB v2 (2.12 MB)",
+      "intendedUse": "Layer D (Upper-right high-orbit relay satellite with gold Kapton MLI bus and blue solar wings)",
+      "license": "Public Domain — NASA 3D Resources (17 U.S.C. § 105)",
+      "optimizationStatus": "Transparent alpha WebP sprite (44 KB) for zero-WebGL-context rendering + full GLB archived"
+    },
+    {
+      "name": "Tracking and Data Relay Satellite — TDRS (B) Full Spacecraft",
+      "file": "/space/craft-tdrs-b.webp",
+      "glbFile": "/space/models/tdrs-b.glb",
+      "source": "NASA 3D Resources — Tracking and Data Relay Satellites (TDRS) (B)",
+      "url": "https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models/Tracking%20and%20Data%20Relay%20Satellites%20(TDRS)%20(B)",
+      "format": "Transparent WebP (960×540, 75 KB) + GLB v2 (975 KB)",
+      "intendedUse": "Layer D (Mid-scroll deep-space communications relay with dual mesh parabolic antennas)",
+      "license": "Public Domain — NASA 3D Resources (17 U.S.C. § 105)",
+      "optimizationStatus": "Transparent alpha WebP sprite (75 KB) + full GLB archived"
+    },
+    {
+      "name": "International Space Station — ISS High-Res",
+      "file": "/space/craft-iss.webp",
+      "glbFile": "/space/models/iss-a.glb",
+      "source": "NASA 3D Resources — International Space Station (ISS) (C) (High Res)",
+      "url": "https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models/International%20Space%20Station%20(ISS)%20(C)%20(High%20Res)",
+      "format": "Transparent WebP (1280×720, 151 KB)",
+      "intendedUse": "Layer D (Low-Earth Orbit combustion research platform — directly tied to BASS, FLEX, ACME, SAME)",
+      "license": "Public Domain — NASA 3D Resources (17 U.S.C. § 105)",
+      "optimizationStatus": "Alpha-keyed transparent WebP (151 KB)"
+    },
+    {
+      "name": "Hubble Space Telescope",
+      "file": "/space/craft-hubble.webp",
+      "source": "NASA 3D Resources — Hubble Space Telescope (A)",
+      "url": "https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models/Hubble%20Space%20Telescope%20(A)",
+      "format": "Transparent WebP (900×506, 26 KB)",
+      "intendedUse": "Layer D (Distant orbital observatory along the Evidence Pipeline / Experiment Anatomy trajectory)",
+      "license": "Public Domain — NASA 3D Resources (17 U.S.C. § 105)",
+      "optimizationStatus": "Transparent alpha WebP sprite (26 KB, 96% size reduction)"
+    },
+    {
+      "name": "Mars Reconnaissance Orbiter (MRO)",
+      "file": "/space/craft-mro.webp",
+      "source": "NASA 3D Resources — Mars Reconnaissance Orbiter (MRO) (A)",
+      "url": "https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models/Mars%20Reconnaissance%20Orbiter%20(MRO)%20(A)",
+      "format": "Transparent WebP (900×506, 43 KB)",
+      "intendedUse": "Layer D (Deep-space orbiter appearing near the Mission Lab section)",
+      "license": "Public Domain — NASA 3D Resources (17 U.S.C. § 105)",
+      "optimizationStatus": "Transparent alpha WebP sprite (43 KB, 95% size reduction)"
+    }
+  ]
+}

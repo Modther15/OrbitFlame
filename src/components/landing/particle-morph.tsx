@@ -280,8 +280,15 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
     if (morph.current.to === nextTo) return;
     const pos = geo.getAttribute("position") as BufferAttribute;
     const col = geo.getAttribute("aColor") as BufferAttribute;
-    morph.current.from.set(pos.array as Float32Array);
-    morph.current.fromCol.set(col.array as Float32Array);
+    const pArr = pos.array as Float32Array;
+    const cArr = col.array as Float32Array;
+    if (morph.current.from.length !== pArr.length) {
+      morph.current.from = new Float32Array(pArr);
+      morph.current.fromCol = new Float32Array(cArr);
+    } else {
+      morph.current.from.set(pArr);
+      morph.current.fromCol.set(cArr);
+    }
     morph.current.to = nextTo;
     morph.current.start = animate ? clockRef.current : -10;
   }, [active, animate, data.targets.length]);

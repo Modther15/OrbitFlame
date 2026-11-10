@@ -1,6 +1,7 @@
 import { ArrowLeft, Database, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -32,37 +33,41 @@ export default async function InvestigationPage({ params }: { params: Promise<{ 
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#f6f9fd] text-[#071126] lg:grid lg:grid-cols-[256px_1fr]">
+    <div className="explore-page-shell relative min-h-screen bg-transparent text-[#f4f8ff] lg:grid lg:grid-cols-[256px_1fr]">
+      {/* Calm Photorealistic Deep-Space Background */}
+      <ExploreSpaceBackground />
+
       <Sidebar />
-      <main className="min-w-0 px-5 pb-16 pt-6 sm:px-8 lg:px-12">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#dfe6f2] pb-6">
+
+      <main className="explore-main-stage relative z-10 min-w-0 px-5 pb-16 pt-6 sm:px-8 lg:px-12">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>
             <Link
               href="/explore"
-              className="inline-flex items-center gap-2 font-mono text-xs font-semibold tracking-wider text-[#0b3d91] uppercase hover:text-[#ff5500]"
+              className="inline-flex items-center gap-2 font-mono text-xs font-semibold tracking-wider text-[#52b6ff] uppercase transition-colors hover:text-[#ff8a32]"
             >
               <ArrowLeft size={14} /> Back to Explore
             </Link>
-            <p className="mt-5 font-mono text-xs font-semibold tracking-[.18em] text-[#ff5500]">
+            <p className="mt-5 font-mono text-xs font-semibold tracking-[.18em] text-[#ff8a32]">
               {`[ ${record.id} // ${record.family} ]`}
             </p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-[#071126] sm:text-4xl">{record.name}</h1>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-[#f4f8ff] sm:text-4xl">{record.name}</h1>
           </div>
           <StatusBadge status="demo" />
         </header>
 
-        <Card className="p-6 sm:p-8">
-          <p className="font-mono text-[10px] font-bold tracking-[.14em] text-amber-700">{record.fixtureLabel}</p>
+        <Card className="border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md sm:p-8">
+          <p className="font-mono text-[10px] font-bold tracking-[.14em] text-amber-300">{record.fixtureLabel}</p>
           <div className="mt-5 grid gap-6 lg:grid-cols-[1.35fr_.65fr]">
             <div>
-              <p className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#0b3d91] uppercase">FICTIONAL OBJECTIVE</p>
-              <p className="mt-2 text-base leading-7 font-medium text-[#071126]">{record.objective}</p>
-              <p className="mt-4 text-sm leading-6 text-[#5b6b88]">{record.summary}</p>
+              <p className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#52b6ff] uppercase">FICTIONAL OBJECTIVE</p>
+              <p className="mt-2 text-base leading-7 font-medium text-[#f4f8ff]">{record.objective}</p>
+              <p className="mt-4 text-sm leading-6 text-[#9cb2d2]">{record.summary}</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {record.safetyDomains.map((domain) => (
                   <span
                     key={domain}
-                    className="rounded-full border border-[#0b3d91]/25 bg-[#0b3d91]/8 px-3.5 py-1 font-mono text-[11px] font-semibold tracking-wider text-[#0b3d91]"
+                    className="rounded-full border border-[#36a9ff]/25 bg-[#36a9ff]/10 px-3.5 py-1 font-mono text-[11px] font-semibold tracking-wider text-[#52b6ff]"
                   >
                     {domain}
                   </span>
@@ -70,29 +75,29 @@ export default async function InvestigationPage({ params }: { params: Promise<{ 
               </div>
             </div>
 
-            <div className="rounded-2xl bg-[linear-gradient(165deg,#0b1936,#060e20)] p-6 text-white shadow-lg">
+            <div className="rounded-2xl border border-white/10 bg-[linear-gradient(165deg,#0b1936,#060e20)] p-6 text-white shadow-lg">
               <p className="font-mono text-[10px] tracking-[.16em] text-[#ffb067] uppercase">METADATA COMPLETENESS</p>
               <p className="mt-3 text-4xl font-extrabold tracking-tight text-white">{record.dataCompleteness}%</p>
               <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,#0b3d91,#1785f2,#ff5500,#f59e0b)]"
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#0b3d91,#36a9ff,#ff5500,#f59e0b)]"
                   style={{ width: `${record.dataCompleteness}%` }}
                 />
               </div>
-              <p className="mt-3 text-xs text-[#b5c7e6]">Interface fixture completeness only. Unreported fields remain explicit.</p>
+              <p className="mt-3 text-xs text-[#9eb7e0]">Interface fixture completeness only. Unreported fields remain explicit.</p>
             </div>
           </div>
         </Card>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <Card className="p-6">
-            <h2 className="text-lg font-extrabold tracking-tight text-[#071126]">Illustrative conditions</h2>
-            <p className="mt-1 text-xs text-[#5b6b88]">All present values are fictional and for UI testing only.</p>
-            <dl className="mt-5 divide-y divide-[#dfe6f2]">
+          <Card className="border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md">
+            <h2 className="text-lg font-extrabold tracking-tight text-[#f4f8ff]">Illustrative conditions</h2>
+            <p className="mt-1 text-xs text-[#8ea5c7]">All present values are fictional and for UI testing only.</p>
+            <dl className="mt-5 divide-y divide-white/10">
               {conditionRows.map(([label, value, missing]) => (
                 <div key={label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3.5 text-sm">
-                  <dt className="font-medium text-[#5b6b88]">{label}</dt>
-                  <dd className={`text-right font-mono text-xs font-semibold ${missing ? "text-[#ff5500]" : "text-[#071126]"}`}>
+                  <dt className="font-medium text-[#8ea5c7]">{label}</dt>
+                  <dd className={`text-right font-mono text-xs font-semibold ${missing ? "text-[#ff8a32]" : "text-[#f4f8ff]"}`}>
                     {value}
                   </dd>
                 </div>
@@ -100,27 +105,27 @@ export default async function InvestigationPage({ params }: { params: Promise<{ 
             </dl>
           </Card>
 
-          <Card className="p-6">
-            <h2 className="text-lg font-extrabold tracking-tight text-[#071126]">Findings summary</h2>
-            <p className="mt-3 text-sm leading-6 text-[#162442]">{record.findingsSummary}</p>
-            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/8 p-3.5 text-xs leading-5 text-amber-900">
-              <ShieldAlert size={16} className="mt-0.5 shrink-0 text-amber-700" />
+          <Card className="border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md">
+            <h2 className="text-lg font-extrabold tracking-tight text-[#f4f8ff]">Findings summary</h2>
+            <p className="mt-3 text-sm leading-6 text-[#c2d5ee]">{record.findingsSummary}</p>
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3.5 text-xs leading-5 text-amber-200">
+              <ShieldAlert size={16} className="mt-0.5 shrink-0 text-amber-400" />
               <span>This fictional fixture does not describe scientific findings and must not be cited as experimental evidence.</span>
             </div>
-            <div className="mt-5 border-t border-[#dfe6f2] pt-4">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#071126]">
-                <Database size={15} className="text-[#0b3d91]" /> Source references
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#f4f8ff]">
+                <Database size={15} className="text-[#36a9ff]" /> Source references
               </div>
-              <p className="mt-1.5 text-xs leading-5 text-[#5b6b88]">
+              <p className="mt-1.5 text-xs leading-5 text-[#8ea5c7]">
                 No NASA source references or URLs are attached to fictional demo records.
               </p>
             </div>
           </Card>
         </div>
 
-        <Card className="mt-6 p-6">
-          <h2 className="text-lg font-extrabold tracking-tight text-[#071126]">Illustrative test run</h2>
-          <p className="mt-2 font-mono text-xs text-[#5b6b88]">
+        <Card className="mt-6 border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md">
+          <h2 className="text-lg font-extrabold tracking-tight text-[#f4f8ff]">Illustrative test run</h2>
+          <p className="mt-2 font-mono text-xs text-[#8ea5c7]">
             {`${record.testRuns[0]?.label} // DEMO FIXTURE — No measured values or source run identifiers are provided.`}
           </p>
         </Card>

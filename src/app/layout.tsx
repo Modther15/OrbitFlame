@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { CosmicTransitionProvider } from "@/components/providers/cosmic-transition";
 
 const display = Outfit({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700", "800", "900"], variable: "--font-display", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-mono", display: "swap" });
@@ -12,5 +13,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={`${display.variable} ${mono.variable}`}><body><QueryProvider>{children}</QueryProvider></body></html>;
+  return (
+    <html lang="en" className={`${display.variable} ${mono.variable}`}>
+      <body>
+        <QueryProvider>
+          <CosmicTransitionProvider>{children}</CosmicTransitionProvider>
+        </QueryProvider>
+      </body>
+    </html>
+  );
 }

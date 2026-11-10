@@ -3,6 +3,7 @@
 import { ArrowUpRight, Filter, GitCompareArrows, Search, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -51,17 +52,21 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f9fd] text-[#071126] lg:grid lg:grid-cols-[256px_1fr]">
+    <div className="explore-page-shell relative min-h-screen bg-transparent text-[#f4f8ff] lg:grid lg:grid-cols-[256px_1fr]">
+      {/* Calm Photorealistic Deep-Space Background */}
+      <ExploreSpaceBackground />
+
       <Sidebar />
-      <main className="min-w-0 px-5 pb-16 pt-6 sm:px-8 lg:px-12">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#dfe6f2] pb-6">
+
+      <main className="explore-main-stage relative z-10 min-w-0 px-5 pb-16 pt-6 sm:px-8 lg:px-12">
+        <header className="explore-header mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>
-            <span className="inline-block rounded-full border border-[#0b3d91]/20 bg-[linear-gradient(90deg,rgba(11,61,145,0.06),rgba(255,85,0,0.06))] px-3 py-1 font-mono text-[10px] font-semibold tracking-[.2em] text-[#0b3d91]">
+            <span className="inline-block rounded-full border border-[#36a9ff]/25 bg-[linear-gradient(90deg,rgba(54,169,255,0.12),rgba(255,138,50,0.1))] px-3 py-1 font-mono text-[10px] font-semibold tracking-[.2em] text-[#52b6ff]">
               [ 01 // RESEARCH CATALOGUE ]
             </span>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-[#071126] sm:text-4xl">
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-[#f4f8ff] sm:text-4xl">
               EXPLORE{" "}
-              <span className="bg-[linear-gradient(95deg,#0b3d91_0%,#1785f2_42%,#ff5500_78%,#f59e0b_100%)] bg-clip-text text-transparent">
+              <span className="bg-[linear-gradient(95deg,#36a9ff_0%,#58b8ff_42%,#ff8a32_78%,#ffaa4c_100%)] bg-clip-text text-transparent">
                 INVESTIGATIONS.
               </span>
             </h1>
@@ -69,14 +74,14 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
           <StatusBadge status="demo" />
         </header>
 
-        <div className="flex flex-wrap gap-3">
-          <label className="flex min-h-12 min-w-64 flex-1 items-center gap-3 rounded-2xl border border-[#dfe6f2] bg-white px-4 text-sm text-[#5b6b88] shadow-xs transition-all focus-within:border-[#ff5500]/50">
-            <Search size={17} aria-hidden="true" className="text-[#0b3d91]" />
+        <div className="explore-controls flex flex-wrap gap-3">
+          <label className="flex min-h-12 min-w-64 flex-1 items-center gap-3 rounded-2xl border border-white/12 bg-[#09152e]/80 px-4 text-sm text-[#d8e6fa] shadow-xs backdrop-blur-md transition-all focus-within:border-[#36a9ff]/60 focus-within:bg-[#0c1d3e]/90">
+            <Search size={17} aria-hidden="true" className="text-[#36a9ff]" />
             <span className="sr-only">Search indexed investigations</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-[#071126] outline-none placeholder:text-[#8c9bbd]"
+              className="min-w-0 flex-1 bg-transparent text-[#f4f8ff] outline-none placeholder:text-[#6f88ad]"
               placeholder="Search titles, objectives, materials (e.g. BASS, polymer, droplet)…"
             />
             {query && (
@@ -84,7 +89,7 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="rounded-lg p-1 text-[#5b6b88] hover:bg-[#edf2fa] hover:text-[#071126]"
+                className="rounded-lg p-1 text-[#8ea5c7] hover:bg-white/10 hover:text-white"
               >
                 <X size={15} />
               </button>
@@ -94,9 +99,9 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
             type="button"
             onClick={() => setShowFilters((value) => !value)}
             aria-expanded={showFilters}
-            className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[#dfe6f2] bg-white px-4 text-xs font-semibold tracking-wider text-[#071126] uppercase shadow-xs hover:border-[#b8c7e0]"
+            className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-white/12 bg-[#09152e]/80 px-4 text-xs font-semibold tracking-wider text-[#e6effc] uppercase shadow-xs backdrop-blur-md transition-colors hover:border-[#36a9ff]/40 hover:bg-[#0c1d3e]"
           >
-            <SlidersHorizontal size={15} className="text-[#ff5500]" /> Filters{" "}
+            <SlidersHorizontal size={15} className="text-[#ff8a32]" /> Filters{" "}
             {activeFilters > 0 && (
               <span className="rounded-full bg-[linear-gradient(135deg,#0b3d91,#ff5500)] px-2 py-0.5 font-mono text-[10px] text-white">
                 {activeFilters}
@@ -106,10 +111,10 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
         </div>
 
         {comparedRecords.length > 0 && (
-          <section id="compare" className="mt-6 overflow-hidden rounded-2xl bg-[linear-gradient(160deg,#0b1936,#060e20)] p-6 text-white shadow-xl">
+          <section id="compare" className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(160deg,#0b1936,#060e20)] p-6 text-white shadow-xl backdrop-blur-md">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
-                <GitCompareArrows size={18} className="text-[#ff6b1a]" />
+                <GitCompareArrows size={18} className="text-[#ff8a32]" />
                 <span className="font-mono text-xs tracking-[.16em] text-[#ffb067] uppercase">
                   {`COMPARE MATRIX // ${comparedRecords.length} OF 3 SELECTED`}
                 </span>
@@ -169,54 +174,58 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
 
         <div className={`mt-6 grid gap-6 ${showFilters ? "xl:grid-cols-[270px_1fr]" : "grid-cols-1"}`}>
           {showFilters && (
-            <Card className="h-fit p-5">
-              <div className="flex items-center justify-between border-b border-[#dfe6f2] pb-3">
-                <h2 className="text-sm font-bold tracking-tight text-[#071126]">Refine catalogue</h2>
-                <Filter size={15} className="text-[#ff5500]" />
+            <Card className="h-fit border border-white/10 bg-[#09152e]/80 p-5 text-[#e6effc] shadow-lg backdrop-blur-md">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h2 className="text-sm font-bold tracking-tight text-[#f4f8ff]">Refine catalogue</h2>
+                <Filter size={15} className="text-[#ff8a32]" />
               </div>
-              <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#5b6b88] uppercase">
+              <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#8ea5c7] uppercase">
                 Investigation family
                 <select
                   value={family}
                   onChange={(event) => setFamily(event.target.value)}
-                  className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6f2] bg-[#f6f9fd] px-3 font-sans text-sm font-medium text-[#071126] outline-none focus:border-[#0b3d91]"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-white/12 bg-[#060e22]/90 px-3 font-sans text-sm font-medium text-[#f0f5fc] outline-none transition-colors focus:border-[#36a9ff]"
                 >
                   <option value="">All families</option>
                   {families.map((option) => (
-                    <option key={option}>{option}</option>
+                    <option key={option} value={option} className="bg-[#060e22] text-[#f0f5fc]">
+                      {option}
+                    </option>
                   ))}
                 </select>
               </label>
-              <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#5b6b88] uppercase">
+              <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#8ea5c7] uppercase">
                 Safety domain
                 <select
                   value={domain}
                   onChange={(event) => setDomain(event.target.value)}
-                  className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6f2] bg-[#f6f9fd] px-3 font-sans text-sm font-medium text-[#071126] outline-none focus:border-[#0b3d91]"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-white/12 bg-[#060e22]/90 px-3 font-sans text-sm font-medium text-[#f0f5fc] outline-none transition-colors focus:border-[#36a9ff]"
                 >
                   <option value="">All domains</option>
                   {domains.map((option) => (
-                    <option key={option}>{option}</option>
+                    <option key={option} value={option} className="bg-[#060e22] text-[#f0f5fc]">
+                      {option}
+                    </option>
                   ))}
                 </select>
               </label>
-              <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#5b6b88] uppercase">
+              <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#8ea5c7] uppercase">
                 Gravity environment
                 <select
                   value=""
                   disabled
-                  className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6f2] bg-[#edf2fa] px-3 font-sans text-sm text-[#8c9bbd]"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#060e22]/50 px-3 font-sans text-sm text-[#5a7294]"
                 >
                   <option>All environments</option>
                 </select>
               </label>
-              <p className="mt-4 rounded-xl bg-amber-500/8 p-3 text-xs leading-5 text-amber-900">
+              <p className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-5 text-amber-200">
                 Fictional fixture values for interface testing only. Missing parameters are never coerced to zero.
               </p>
               <button
                 type="button"
                 onClick={clearFilters}
-                className="mt-4 min-h-10 w-full rounded-full border border-[#dfe6f2] text-xs font-semibold tracking-wider text-[#071126] uppercase transition-colors hover:bg-[#071126] hover:text-white"
+                className="mt-4 min-h-10 w-full rounded-full border border-white/15 text-xs font-semibold tracking-wider text-[#e6effc] uppercase transition-colors hover:border-[#36a9ff]/40 hover:bg-white/10 hover:text-white"
               >
                 Reset filters
               </button>
@@ -225,19 +234,19 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
 
           <div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-xs tracking-wider text-[#5b6b88] uppercase" aria-live="polite">
+              <p className="font-mono text-xs tracking-wider text-[#8ea5c7] uppercase" aria-live="polite">
                 {`${filteredRecords.length} FICTIONAL DEMO ${filteredRecords.length === 1 ? "RECORD" : "RECORDS"}`}
               </p>
-              <label className="flex items-center gap-2 font-mono text-[11px] text-[#5b6b88] uppercase">
+              <label className="flex items-center gap-2 font-mono text-[11px] text-[#8ea5c7] uppercase">
                 Sort
                 <select
                   value={sort}
                   onChange={(event) => setSort(event.target.value)}
-                  className="min-h-10 rounded-xl border border-[#dfe6f2] bg-white px-3 font-sans text-xs font-semibold text-[#071126]"
+                  className="min-h-10 rounded-xl border border-white/12 bg-[#060e22]/90 px-3 font-sans text-xs font-semibold text-[#f0f5fc] outline-none focus:border-[#36a9ff]"
                 >
-                  <option value="name-asc">Name A–Z</option>
-                  <option value="name-desc">Name Z–A</option>
-                  <option value="completeness">Data completeness</option>
+                  <option value="name-asc" className="bg-[#060e22] text-[#f0f5fc]">Name A–Z</option>
+                  <option value="name-desc" className="bg-[#060e22] text-[#f0f5fc]">Name Z–A</option>
+                  <option value="completeness" className="bg-[#060e22] text-[#f0f5fc]">Data completeness</option>
                 </select>
               </label>
             </div>
@@ -247,39 +256,42 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                 {filteredRecords.map((record) => {
                   const isCompared = selectedIds.includes(record.id);
                   return (
-                    <Card key={record.id} className="p-6 transition-all hover:border-[#ff5500]/35 hover:shadow-md">
+                    <Card
+                      key={record.id}
+                      className="explore-card-item border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md transition-all hover:border-[#36a9ff]/40 hover:bg-[#0b1b3b]/85 hover:shadow-[0_16px_36px_-12px_rgba(54,169,255,0.18)]"
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <span className="font-mono text-[11px] font-semibold tracking-[.16em] text-[#ff5500]">
+                          <span className="font-mono text-[11px] font-semibold tracking-[.16em] text-[#ff8a32]">
                             {`${record.id} // ${record.family}`}
                           </span>
-                          <h2 className="mt-1.5 text-xl font-bold tracking-tight text-[#071126]">{record.name}</h2>
+                          <h2 className="mt-1.5 text-xl font-bold tracking-tight text-[#f4f8ff]">{record.name}</h2>
                         </div>
                         <StatusBadge status="demo" />
                       </div>
-                      <p className="mt-2.5 text-sm text-[#5b6b88]">
+                      <p className="mt-2.5 text-sm text-[#9cb2d2]">
                         {record.fuelMaterial} · {record.conditions.gravity} ·{" "}
-                        <span className="font-semibold text-[#0b3d91]">{record.safetyDomains.join(", ")}</span>
+                        <span className="font-semibold text-[#52b6ff]">{record.safetyDomains.join(", ")}</span>
                       </p>
-                      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#dfe6f2] pt-4">
-                        <span className="font-mono text-[11px] tracking-wider text-[#5b6b88] uppercase">
+                      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+                        <span className="font-mono text-[11px] tracking-wider text-[#7d95b8] uppercase">
                           {`Completeness ${record.dataCompleteness}% · ${record.testRuns.length} illustrative run`}
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => toggleCompare(record.id)}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tracking-wider uppercase transition-all ${
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tracking-wider uppercase transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] ${
                               isCompared
-                                ? "border-transparent bg-[linear-gradient(135deg,#ff5500,#f59e0b)] !text-white"
-                                : "border-[#dfe6f2] bg-white text-[#071126] hover:border-[#ff5500]"
+                                ? "border-transparent bg-[linear-gradient(135deg,#ff5500,#f59e0b)] !text-white shadow-[0_10px_22px_-8px_rgba(255,85,0,0.5)]"
+                                : "border-white/15 bg-white/[0.05] text-[#d8e6fa] hover:-translate-y-0.5 hover:border-[#ff5500]/50 hover:bg-white/[0.1] hover:text-white"
                             }`}
                           >
                             <GitCompareArrows size={13} /> {isCompared ? "Comparing" : "Compare"}
                           </button>
                           <Link
                             href={`/investigations/${record.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#071126_0%,#0b3d91_100%)] px-4 py-2 text-xs font-semibold tracking-wider !text-white uppercase transition-transform hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,#0b3d91_0%,#ff5500_100%)]"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(110deg,#0a1b3a_0%,#174585_45%,#2563eb_72%,#ff5500_100%)] bg-[length:240%_100%] bg-[position:0%_50%] px-4 py-2 text-xs font-semibold tracking-wider !text-white uppercase shadow-[0_8px_22px_-10px_rgba(37,99,235,0.45)] transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] hover:-translate-y-0.5 hover:bg-[position:100%_50%] hover:shadow-[0_14px_28px_-10px_rgba(255,85,0,0.5)]"
                           >
                             Open details <ArrowUpRight size={13} />
                           </Link>
@@ -290,9 +302,9 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                 })}
               </div>
             ) : (
-              <Card className="flex min-h-[280px] flex-col items-center justify-center p-8 text-center">
-                <h2 className="text-xl font-bold text-[#071126]">No matching demo records</h2>
-                <p className="mt-2 text-sm text-[#5b6b88]">Try a different search keyword or reset the active filters.</p>
+              <Card className="flex min-h-[280px] flex-col items-center justify-center border border-white/10 bg-[#09152e]/80 p-8 text-center backdrop-blur-md">
+                <h2 className="text-xl font-bold text-[#f4f8ff]">No matching demo records</h2>
+                <p className="mt-2 text-sm text-[#8ea5c7]">Try a different search keyword or reset the active filters.</p>
               </Card>
             )}
           </div>

@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 export type FamilyCard = {
   key: string;
@@ -36,6 +36,7 @@ function InstrumentVisual({ index, family }: { index: number; family: string }) 
 export function FamiliesCarousel({ families }: { families: FamilyCard[] }) {
   const [active, setActive] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const go = (next: number) => {
     setDir(next > active || (active === families.length - 1 && next === 0) ? 1 : -1);
     setActive((next + families.length) % families.length);
@@ -43,16 +44,47 @@ export function FamiliesCarousel({ families }: { families: FamilyCard[] }) {
   const f = families[active];
   const next = families[(active + 1) % families.length];
 
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); go(active + 1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(active - 1); }
+  };
+  // Touch / pen swipe. Vertical page scrolling is preserved via `touch-action: pan-y`.
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse") swipe.current = { x: e.clientX, y: e.clientY };
+  };
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) go(active + (dx < 0 ? 1 : -1));
+  };
+
   return (
-    <div className="lp-carousel" onKeyDown={(e) => { if (e.key === "ArrowRight") go(active + 1); if (e.key === "ArrowLeft") go(active - 1); }}>
-      <div className={`lp-carousel-track ${dir === 1 ? "from-right" : "from-left"}`} key={f.key}>
-        <div className="lp-carousel-info">
-          <span className="lp-mono lp-tag">{`${f.domain} // ${f.phase}`}</span>
+    <div
+      className="lp-carousel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="NASA combustion investigation families"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+    >
+      <div
+        className={`lp-carousel-track ${dir === 1 ? "from-right" : "from-left"}`}
+        key={f.key}
+        data-phase={f.phase.toLowerCase()}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => { swipe.current = null; }}
+      >
+        <div className="lp-carousel-info" aria-live="polite">
+          <span className="lp-mono lp-tag lp-family-tag">{`${f.domain} // ${f.phase}`}</span>
           <h3>{f.name}</h3>
           <p className="lp-carousel-full">{f.full}</p>
           <p>{f.description}</p>
           <dl className="lp-specs">
-            <div><dt className="lp-mono">Fuel phase</dt><dd>{f.phase}</dd></div>
+            <div><dt className="lp-mono">Fuel phase</dt><dd><i className="lp-phase-dot" aria-hidden="true" />{f.phase}</dd></div>
             <div><dt className="lp-mono">Platform</dt><dd>{f.platform}</dd></div>
             <div><dt className="lp-mono">Demo records</dt><dd>{String(f.records).padStart(2, "0")}</dd></div>
           </dl>
@@ -67,11 +99,21 @@ export function FamiliesCarousel({ families }: { families: FamilyCard[] }) {
       </div>
 
       <div className="lp-carousel-foot">
-        <span className="lp-mono lp-carousel-index">{String(active + 1).padStart(2, "0")}</span>
+        <span className="lp-mono lp-carousel-index">{String(active + 1).padStart(2, "0")}<small>{` / ${String(families.length).padStart(2, "0")}`}</small></span>
         <span className="lp-mono lp-carousel-label">{`${f.key} // ${f.full}`}</span>
         <div className="lp-carousel-progress" role="tablist" aria-label="Investigation families">
           {families.map((item, i) => (
-            <button key={item.key} role="tab" aria-selected={i === active} aria-label={item.name} className={i === active ? "is-active" : ""} onClick={() => go(i)} />
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={i === active}
+              aria-label={item.name}
+              data-label={item.name}
+              data-phase={item.phase.toLowerCase()}
+              className={i === active ? "is-active" : ""}
+              onClick={() => go(i)}
+            />
           ))}
         </div>
         <div className="lp-carousel-arrows">
