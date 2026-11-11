@@ -228,31 +228,31 @@ export function RevealController() {
         {/* 1. NASA TDRS-C Relay Satellite — Upper-right retrograde high-orbit trajectory (Right -> Left) */}
         <div className="lp-craft lp-craft--tdrs-c">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/space/craft-tdrs-c.webp" alt="" loading="eager" decoding="async" />
+          <img src="/space/craft-tdrs-c.webp" alt="" width={960} height={540} loading="eager" decoding="async" />
         </div>
 
         {/* 2. International Space Station (ISS High-Res) — Low-Earth Orbit prograde trajectory (Left -> Right) */}
         <div className="lp-craft lp-craft--iss">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/space/craft-iss.webp" alt="" loading="eager" decoding="async" />
+          <img src="/space/craft-iss.webp" alt="" width={1280} height={720} loading="eager" decoding="async" />
         </div>
 
         {/* 3. NASA Hubble Space Telescope — Mid-scroll orbital pass (Right -> Left) */}
         <div className="lp-craft lp-craft--hubble">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/space/craft-hubble.webp" alt="" loading="lazy" decoding="async" />
+          <img src="/space/craft-hubble.webp" alt="" width={900} height={506} loading="lazy" decoding="async" />
         </div>
 
         {/* 4. NASA TDRS-B Dual-Dish Relay — Mid/Lower-scroll deep-space trajectory (Left -> Right) */}
         <div className="lp-craft lp-craft--tdrs-b">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/space/craft-tdrs-b.webp" alt="" loading="lazy" decoding="async" />
+          <img src="/space/craft-tdrs-b.webp" alt="" width={960} height={540} loading="lazy" decoding="async" />
         </div>
 
         {/* 5. NASA Mars Reconnaissance Orbiter (MRO) — Deep-space Mission Lab trajectory (Right -> Left) */}
         <div className="lp-craft lp-craft--mro">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/space/craft-mro.webp" alt="" loading="lazy" decoding="async" />
+          <img src="/space/craft-mro.webp" alt="" width={900} height={506} loading="lazy" decoding="async" />
         </div>
       </div>
 

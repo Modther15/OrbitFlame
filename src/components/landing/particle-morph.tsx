@@ -169,13 +169,19 @@ function buildColors(pos: Float32Array, n: number) {
 const vertex = /* glsl */ `
   attribute vec3 aColor;
   attribute float aSize;
+  attribute float aPhase;
   uniform float uSize;
   uniform float uPixelRatio;
+  uniform float uTime;
+  uniform float uIdle;
   varying vec3 vColor;
   varying float vFade;
   void main() {
     vColor = aColor;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vec3 animatedPosition = position;
+    animatedPosition.x += sin(uTime * 0.9 + aPhase) * uIdle;
+    animatedPosition.y += cos(uTime * 0.8 + aPhase) * uIdle;
+    vec4 mv = modelViewMatrix * vec4(animatedPosition, 1.0);
     gl_Position = projectionMatrix * mv;
     gl_PointSize = uSize * aSize * uPixelRatio * (4.6 / -mv.z);
     vFade = clamp((-mv.z - 3.4) / 2.8, 0.0, 1.0);
@@ -244,6 +250,7 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
       posArgs: [livePos, 3] as [Float32Array, number],
       colArgs: [liveCol, 3] as [Float32Array, number],
       sizeArgs: [size, 1] as [Float32Array, number],
+      phaseArgs: [phase, 1] as [Float32Array, number],
     };
   }, [shapes, count]);
 
@@ -259,6 +266,8 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
           uSize: { value: pointSize },
           uPixelRatio: { value: Math.min(gl.getPixelRatio(), 2) },
           uOpacity: { value: dark ? 0.9 : 0.92 },
+          uTime: { value: 0 },
+          uIdle: { value: 0 },
         },
       }),
     [dark, gl, pointSize],
@@ -272,6 +281,7 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
     start: -10,
   });
   const clockRef = useRef(0);
+  const buffersSettled = useRef(false);
 
   useEffect(() => {
     const geo = pointsRef.current?.geometry;
@@ -291,6 +301,7 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
     }
     morph.current.to = nextTo;
     morph.current.start = animate ? clockRef.current : -10;
+    buffersSettled.current = false;
   }, [active, animate, data.targets.length]);
 
   useFrame((state, dt) => {
@@ -308,27 +319,31 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
     const tCol = data.colors[to];
     const duration = 1.7;
     const elapsed = time - start;
+    const settled = elapsed >= duration;
+    const shader = pointsRef.current?.material as ShaderMaterial;
+    // Three.js uniforms are mutable GPU state, not React render state.
+    // eslint-disable-next-line react-hooks/immutability
+    shader.uniforms.uTime.value = time;
+    shader.uniforms.uIdle.value = animate ? 0.012 : 0;
 
-    for (let i = 0; i < count; i++) {
-      const o = i * 3;
-      let local = (elapsed - data.delay[i] * duration) / (duration * 0.65);
-      local = local < 0 ? 0 : local > 1 ? 1 : local;
-      const e = easeInOutCubic(local);
-      const bump = Math.sin(local * Math.PI) * 0.42;
-      const idle = animate ? 0.012 : 0;
-      const ph = data.phase[i];
-      const basePx = from[o] + (target[o] - from[o]) * e + data.scatter[o] * bump;
-      const basePy = from[o + 1] + (target[o + 1] - from[o + 1]) * e + data.scatter[o + 1] * bump;
-      const basePz = from[o + 2] + (target[o + 2] - from[o + 2]) * e + data.scatter[o + 2] * bump;
-      p[o] = basePx + Math.sin(time * 0.9 + ph) * idle;
-      p[o + 1] = basePy + Math.cos(time * 0.8 + ph) * idle;
-      p[o + 2] = basePz;
-      c[o] = fromCol[o] + (tCol[o] - fromCol[o]) * e;
-      c[o + 1] = fromCol[o + 1] + (tCol[o + 1] - fromCol[o + 1]) * e;
-      c[o + 2] = fromCol[o + 2] + (tCol[o + 2] - fromCol[o + 2]) * e;
+    if (!settled || !buffersSettled.current) {
+      for (let i = 0; i < count; i++) {
+        const o = i * 3;
+        let local = settled ? 1 : (elapsed - data.delay[i] * duration) / (duration * 0.65);
+        local = local < 0 ? 0 : local > 1 ? 1 : local;
+        const e = settled ? 1 : easeInOutCubic(local);
+        const bump = settled ? 0 : Math.sin(local * Math.PI) * 0.42;
+        p[o] = from[o] + (target[o] - from[o]) * e + data.scatter[o] * bump;
+        p[o + 1] = from[o + 1] + (target[o + 1] - from[o + 1]) * e + data.scatter[o + 1] * bump;
+        p[o + 2] = from[o + 2] + (target[o + 2] - from[o + 2]) * e + data.scatter[o + 2] * bump;
+        c[o] = fromCol[o] + (tCol[o] - fromCol[o]) * e;
+        c[o + 1] = fromCol[o + 1] + (tCol[o + 1] - fromCol[o + 1]) * e;
+        c[o + 2] = fromCol[o + 2] + (tCol[o + 2] - fromCol[o + 2]) * e;
+      }
+      pos.needsUpdate = true;
+      col.needsUpdate = true;
+      buffersSettled.current = settled;
     }
-    pos.needsUpdate = true;
-    col.needsUpdate = true;
 
     // Rotation: either a commanded angle (inspector pins) or slow auto-rotation, plus pointer tilt.
     if (rotationY !== null) {
@@ -349,6 +364,7 @@ function Field({ shapes, active, count, pointSize, animate, autoRotate, rotation
           <bufferAttribute attach="attributes-position" args={data.posArgs} />
           <bufferAttribute attach="attributes-aColor" args={data.colArgs} />
           <bufferAttribute attach="attributes-aSize" args={data.sizeArgs} />
+          <bufferAttribute attach="attributes-aPhase" args={data.phaseArgs} />
         </bufferGeometry>
       </points>
     </group>
@@ -384,34 +400,46 @@ type ParticleMorphProps = {
 export function ParticleMorph({ shapes, active = 0, count = 5200, pointSize = 9, autoRotate = true, rotationY = null, dark = false, cameraZ = 4.6, className, label }: ParticleMorphProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
   const [webgl, setWebgl] = useState(true);
   const reduced = useReducedMotion();
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: "120px" });
+    const io = new IntersectionObserver(([entry]) => {
+      setVisible(entry.isIntersecting);
+      if (entry.isIntersecting) setHasBeenVisible(true);
+    }, { rootMargin: "120px" });
     io.observe(el);
     return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const update = () => setPageVisible(document.visibilityState === "visible");
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
   const n = typeof window !== "undefined" && window.innerWidth < 768 ? Math.round(count * 0.45) : count;
 
   return (
     <div ref={wrapRef} className={className} role="img" aria-label={label}>
-      {webgl ? (
+      {webgl && hasBeenVisible ? (
         <Canvas
           dpr={[1, 1.75]}
-          frameloop={visible ? (reduced ? "demand" : "always") : "never"}
+          frameloop={visible && pageVisible ? (reduced ? "demand" : "always") : "never"}
           camera={{ position: [0, 0, cameraZ], fov: 40 }}
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
           onCreated={({ gl }) => gl.domElement.addEventListener("webglcontextlost", () => setWebgl(false), { once: true })}
         >
           <Field shapes={shapes} active={active} count={n} pointSize={pointSize} animate={!reduced} autoRotate={autoRotate} rotationY={rotationY} dark={dark} />
         </Canvas>
-      ) : (
+      ) : !webgl ? (
         <div className="lp-fallback">Conceptual particle visual unavailable on this device.</div>
-      )}
+      ) : null}
     </div>
   );
 }
