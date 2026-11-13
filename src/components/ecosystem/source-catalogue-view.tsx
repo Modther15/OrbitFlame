@@ -17,114 +17,43 @@ import { ExploreSpaceBackground } from "@/components/explorer/explore-space-back
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
 import { validateInvestigationDatasetBatch, type DatasetImportReport } from "@/lib/ingestion/preview";
-import { buildSourceCatalogue, NASA_SOURCE_PRIORITY_TIERS } from "@/lib/science/source-catalogue";
+import type { DatasetScopeSummary } from "@/lib/science/provenance";
+import { NASA_SOURCE_PRIORITY_TIERS, type SourceCatalogueEntry } from "@/lib/science/source-catalogue";
 
-const SYNTHETIC_VALID_TEST_PAYLOAD = JSON.stringify(
-  [
-    {
-      id: "SYNTH-SCHEMA-TEST-01",
-      name: "Synthetic schema structure validation example (NOT NASA DATA)",
-      acronym: "TEST",
-      family: null,
-      objective: "Demonstrates schema, unit, and provenance validation boundaries in dry-run preview.",
-      summary: "Synthetic test fixture only; carries no physical combustion measurements.",
-      safetyDomains: ["DETECTION"],
-      gravityEnvironments: ["Microgravity (illustrative test)"],
-      provenanceStatus: "DEMO_FIXTURE",
-      evidenceLevel: "ANALOGOUS",
-      source: null,
-      testRuns: [
-        {
-          id: "SYNTH-SCHEMA-TEST-01-R1",
-          sourceRunKey: null,
-          label: "Synthetic validation run",
-          objectiveVariant: null,
-          provenanceStatus: "DEMO_FIXTURE",
-          conditions: [
-            {
-              parameterKey: "oxygen_concentration",
-              valueOriginal: 21,
-              textOriginal: null,
-              unitOriginal: "%",
-              valueSi: null,
-              unitSi: null,
-              missingStatus: "PRESENT",
-              source: null,
-            },
-            {
-              parameterKey: "pressure",
-              valueOriginal: 101.3,
-              textOriginal: null,
-              unitOriginal: "kPa",
-              valueSi: 101300,
-              unitSi: "Pa",
-              missingStatus: "PRESENT",
-              source: null,
-            },
-          ],
-          measurements: [],
-        },
-      ],
-    },
-  ],
-  null,
-  2,
-);
-
-const SYNTHETIC_REJECT_TEST_PAYLOAD = JSON.stringify(
-  [
-    {
-      id: "D-001",
-      name: "Synthetic rejection test: duplicate ID + unverified NASA flag + missing unit",
-      acronym: null,
-      family: "BASS",
-      objective: "Tests rejection guardrails.",
-      summary: null,
-      safetyDomains: ["PREVENTION"],
-      gravityEnvironments: ["Microgravity"],
-      provenanceStatus: "NASA_VERIFIED_DATA",
-      evidenceLevel: "DIRECT",
-      source: null,
-      testRuns: [
-        {
-          id: "DUP-RUN-1",
-          sourceRunKey: null,
-          label: "Bad unit run",
-          objectiveVariant: null,
-          provenanceStatus: "NASA_VERIFIED_DATA",
-          conditions: [
-            {
-              parameterKey: "pressure",
-              valueOriginal: 98,
-              textOriginal: null,
-              unitOriginal: null,
-              valueSi: null,
-              unitSi: null,
-              missingStatus: "PRESENT",
-              source: null,
-            },
-          ],
-          measurements: [],
-        },
-      ],
-    },
-  ],
-  null,
-  2,
-);
-
-export function SourceCatalogueView({ records }: { records: DemoInvestigation[] }) {
-  const { datasetScope, entries, verifiedSourceCount } = useMemo(() => buildSourceCatalogue(records), [records]);
+export function SourceCatalogueView({
+  datasetScope,
+  entries,
+  verifiedSourceCount,
+  existingIds,
+  examples,
+}: {
+  datasetScope: DatasetScopeSummary;
+  entries: SourceCatalogueEntry[];
+  verifiedSourceCount: number;
+  /** Indexed investigation ids, used only for duplicate-ID detection in the dry-run validator. */
+  existingIds: string[];
+  /** Validator examples derived from a real indexed PSI record (no hand-written fixtures). */
+  examples: { duplicate: string; sourceId: string | null };
+}) {
+  const records = useMemo(() => existingIds.map((id) => ({ id })), [existingIds]);
+  /** Same real record re-submitted under a new investigation / run id (derived from the real record text). */
+  const validExample = useMemo(() => {
+    try {
+      const arr = JSON.parse(examples.duplicate) as { id: string; testRuns: { id: string }[] }[];
+      return JSON.stringify(arr.map((r) => ({ ...r, id: `${r.id}-RESUBMISSION-EXAMPLE`, testRuns: r.testRuns.map((t) => ({ ...t, id: `${t.id}-resub` })) })), null, 2);
+    } catch {
+      return "[]";
+    }
+  }, [examples.duplicate]);
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<"ALL" | "VERIFIED_ONLY" | "DEMO_UNCONNECTED">("ALL");
 
   // Client-side dry-run ingestion validator state
-  const [jsonInput, setJsonInput] = useState(SYNTHETIC_REJECT_TEST_PAYLOAD);
+  const [jsonInput, setJsonInput] = useState(examples.duplicate);
   const [parseError, setParseError] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<DatasetImportReport | null>(() =>
-    validateInvestigationDatasetBatch(JSON.parse(SYNTHETIC_REJECT_TEST_PAYLOAD), records),
+    validateInvestigationDatasetBatch(JSON.parse(examples.duplicate), records),
   );
 
   const filteredEntries = useMemo(() => {
@@ -200,7 +129,7 @@ export function SourceCatalogueView({ records }: { records: DemoInvestigation[] 
                 <ShieldAlert size={17} className="mt-0.5 shrink-0 text-amber-300" aria-hidden="true" />
                 <div>
                   <span className="font-mono text-[10.5px] font-bold tracking-wider text-amber-300 uppercase">
-                    ZERO CONNECTED NASA SOURCE DOCUMENTS (DEMO FIXTURE INDEX ACTIVE)
+                    ZERO CONNECTED NASA SOURCE DOCUMENTS
                   </span>
                   <p className="mt-0.5 text-[#fbe6b5]">
                     No verified NASA PSI or NTRS source documents are connected in this workspace yet. OrbitFlame never
@@ -367,22 +296,22 @@ export function SourceCatalogueView({ records }: { records: DemoInvestigation[] 
                 <button
                   type="button"
                   onClick={() => {
-                    setJsonInput(SYNTHETIC_REJECT_TEST_PAYLOAD);
-                    runDryRunValidation(SYNTHETIC_REJECT_TEST_PAYLOAD);
+                    setJsonInput(examples.duplicate);
+                    runDryRunValidation(examples.duplicate);
                   }}
                   className="rounded-xl border border-rose-400/35 bg-rose-500/10 px-3 py-1.5 font-mono text-[10px] font-semibold text-rose-200 hover:border-rose-300"
                 >
-                  Load Synthetic Rejection Test
+                  Load real record (duplicate ID)
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setJsonInput(SYNTHETIC_VALID_TEST_PAYLOAD);
-                    runDryRunValidation(SYNTHETIC_VALID_TEST_PAYLOAD);
+                    setJsonInput(validExample);
+                    runDryRunValidation(validExample);
                   }}
                   className="rounded-xl border border-[#36a9ff]/35 bg-[#36a9ff]/10 px-3 py-1.5 font-mono text-[10px] font-semibold text-[#7bc5ff] hover:border-[#36a9ff]"
                 >
-                  Load Synthetic Valid Shape
+                  Load same record, new ID
                 </button>
               </div>
             </div>
@@ -393,7 +322,7 @@ export function SourceCatalogueView({ records }: { records: DemoInvestigation[] 
                   htmlFor="ingestion-json-input"
                   className="block font-mono text-[10px] font-semibold tracking-wider text-[#52b6ff] uppercase"
                 >
-                  Proposed Investigation JSON Batch (Synthetic Test — Not NASA Data)
+                  Proposed Investigation JSON Batch (example: real {examples.sourceId ?? "PSI"} record from the index)
                 </label>
                 <textarea
                   id="ingestion-json-input"

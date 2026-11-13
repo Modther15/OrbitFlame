@@ -1,4 +1,3 @@
-import type { DemoInvestigation } from "@/lib/api/schemas";
 import { DEMO_WARNING } from "@/lib/demo/dataset";
 import {
   classifyGravityRegime,
@@ -6,7 +5,9 @@ import {
   extractRecordNumericCondition,
   formatProvenanceTag,
   isRecordVerified,
+  presentMeasurementTotal,
   type DatasetScopeSummary,
+  type ScopeRecord,
 } from "@/lib/science/provenance";
 
 export type RadarGravityAxis = "MICROGRAVITY" | "LUNAR_GRAVITY" | "MARS_GRAVITY" | "NORMAL_GRAVITY";
@@ -122,25 +123,19 @@ export type EvidenceGapRadarReport = {
   totalsByStatus: Record<GapCoverageStatus, number>;
 };
 
-function classifyRecordForCell(rec: DemoInvestigation): Exclude<GapCoverageStatus, "UNAVAILABLE"> {
+function classifyRecordForCell(rec: ScopeRecord): Exclude<GapCoverageStatus, "UNAVAILABLE"> {
   if (rec.evidenceLevel === "PLANNED") return "PLANNED";
   const verified = isRecordVerified(rec);
-  const measCount = rec.testRuns.reduce(
-    (sum, r) => sum + r.measurements.filter((m) => m.missingStatus === "PRESENT").length,
-    0,
-  );
+  const measCount = presentMeasurementTotal(rec);
   if (verified && rec.evidenceLevel === "DIRECT" && measCount > 0) {
     return "DIRECT";
   }
   return "ANALOGOUS";
 }
 
-function summarizeRecord(rec: DemoInvestigation): GapRecordSummary {
+function summarizeRecord(rec: ScopeRecord): GapRecordSummary {
   const verified = isRecordVerified(rec);
-  const measCount = rec.testRuns.reduce(
-    (sum, r) => sum + r.measurements.filter((m) => m.missingStatus === "PRESENT").length,
-    0,
-  );
+  const measCount = presentMeasurementTotal(rec);
   const missing: string[] = [];
   if (extractRecordNumericCondition(rec, "oxygen_concentration").missing) missing.push("Oxygen concentration");
   if (extractRecordNumericCondition(rec, "pressure").missing) missing.push("Pressure");
@@ -219,7 +214,7 @@ function generateProposedQuestions(
   return questions;
 }
 
-export function buildEvidenceGapRadar(records: DemoInvestigation[]): EvidenceGapRadarReport {
+export function buildEvidenceGapRadar(records: ScopeRecord[]): EvidenceGapRadarReport {
   const datasetScope = deriveDatasetScope(records);
 
   const partialUnspecified = records

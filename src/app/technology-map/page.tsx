@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TechnologyMapView } from "@/components/ecosystem/technology-map-view";
-import { investigationRepository } from "@/lib/data/repository";
+import { listSummaries } from "@/lib/data/repository";
+import { buildTechnologyMap } from "@/lib/science/technology-map";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TechnologyMapPage() {
-  const records = await investigationRepository.list();
-  return <TechnologyMapView records={records} />;
+  const records = await listSummaries();
+  const report = buildTechnologyMap(records);
+  return <TechnologyMapView report={report} />;
 }

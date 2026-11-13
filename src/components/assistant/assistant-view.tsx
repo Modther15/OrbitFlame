@@ -59,7 +59,7 @@ type AssistantConversationMessage =
     };
 
 type AssistantViewProps = {
-  dataScope: "DEMO DATA" | "VERIFIED INDEXED DATA" | "EMPTY";
+  dataScope: "DEMO DATA" | "VERIFIED NASA PSI EXPERIMENTAL DATA" | "EMPTY";
   indexedCount: number;
   isAiConfigured: boolean;
   suggestions: AssistantSuggestion[];
@@ -236,7 +236,7 @@ export function AssistantView({
     setActiveCitation(null);
   }
 
-  const scopeBadgeStatus = dataScope === "VERIFIED INDEXED DATA" ? "verified" : dataScope === "EMPTY" ? "empty" : "demo";
+  const scopeBadgeStatus = dataScope === "VERIFIED NASA PSI EXPERIMENTAL DATA" ? "verified" : dataScope === "EMPTY" ? "empty" : "demo";
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#050b1b] text-[#f4f8ff] lg:grid lg:grid-cols-[260px_1fr]">
@@ -448,12 +448,21 @@ export function AssistantView({
                           </span>
                           <span
                             className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
-                              response.mode === "VERIFIED_INDEXED_DATA"
+                              response.dataMode === "VERIFIED_INDEXED_DATA"
                                 ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-300"
                                 : "border-amber-400/35 bg-amber-400/10 text-amber-300"
                             }`}
                           >
-                            {response.mode === "VERIFIED_INDEXED_DATA" ? "VERIFIED INDEXED DATA" : "DEMO FIXTURE SCOPE"}
+                            {response.dataMode === "VERIFIED_INDEXED_DATA" ? "VERIFIED NASA PSI EXPERIMENTAL DATA" : "DEMO FIXTURE SCOPE"}
+                          </span>
+                          <span
+                            data-testid="assistant-mode"
+                            title={response.fallbackReason ?? (response.mode === "llm" ? "Answer synthesised by the language model over retrieved PSI evidence" : "Evidence-only answer built from the PSI database")}
+                            className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
+                              response.mode === "llm" ? "border-sky-400/35 bg-sky-400/10 text-sky-200" : "border-white/20 bg-white/[0.05] text-[#c4d7f2]"
+                            }`}
+                          >
+                            mode: {response.mode}
                           </span>
                         </div>
 
@@ -476,6 +485,13 @@ export function AssistantView({
                           </button>
                         </div>
                       </div>
+
+                      {response.habitatView && (
+                        <div data-testid="assistant-habitat-view" className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] p-3.5">
+                          <p className="font-mono text-[10px] font-semibold tracking-[.16em] text-amber-300 uppercase">Habitat ranking &amp; gravity caveat (deterministic, physics_ranker)</p>
+                          <p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-[#fff1d0]">{response.habitatView}</p>
+                        </div>
+                      )}
 
                       {/* Main Answer / Abstention / Config Notice */}
                       {isAbstained ? (
@@ -673,15 +689,15 @@ export function AssistantView({
               <div
                 data-testid="active-dataset-status"
                 className={
-                  dataScope === "VERIFIED INDEXED DATA"
+                  dataScope === "VERIFIED NASA PSI EXPERIMENTAL DATA"
                     ? "rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 font-mono text-[10.5px] font-semibold tracking-wider text-emerald-200 uppercase"
                     : dataScope === "EMPTY"
                       ? "rounded-lg border border-rose-400/30 bg-rose-500/10 px-3.5 py-2 font-mono text-[10.5px] font-semibold tracking-wider text-rose-200 uppercase"
                       : "rounded-lg border border-amber-400/30 bg-amber-400/10 px-3.5 py-2 font-mono text-[10.5px] font-semibold tracking-wider text-amber-200 uppercase"
                 }
               >
-                {dataScope === "VERIFIED INDEXED DATA"
-                  ? "ACTIVE DATASET: VERIFIED NASA-SOURCED RECORDS"
+                {dataScope === "VERIFIED NASA PSI EXPERIMENTAL DATA"
+                  ? "ACTIVE DATASET: VERIFIED NASA PSI EXPERIMENTAL DATA"
                   : dataScope === "EMPTY"
                     ? "ACTIVE DATASET: NO INDEXED RECORDS CONNECTED — ABSTENTION ACTIVE"
                     : "ACTIVE DATASET: DEMO FIXTURES — FICTIONAL DATA — NOT NASA MEASUREMENTS"}

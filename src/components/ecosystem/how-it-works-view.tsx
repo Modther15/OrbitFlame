@@ -19,8 +19,7 @@ import { ExploreSpaceBackground } from "@/components/explorer/explore-space-back
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
-import { deriveDatasetScope } from "@/lib/science/provenance";
+import type { DatasetScopeSummary } from "@/lib/science/provenance";
 import { checkNumericUnitCompatibility, normalizeToKnownSi } from "@/lib/science/units";
 
 const ANCHOR_PILLARS = [
@@ -101,10 +100,10 @@ const WORKFLOW_STAGES = [
     routeHref: "/sources",
     routeLabel: "Open Research Library",
     summary:
-      "Verified NASA provenance requires BOTH provenanceStatus === 'NASA_VERIFIED_DATA' AND source.verificationStatus === 'VERIFIED'. Demo fixtures carry an explicit non-NASA label across every view.",
+      "Verified NASA provenance requires BOTH provenanceStatus === 'NASA_VERIFIED_DATA' AND source.verificationStatus === 'VERIFIED'. Any non-NASA illustrative record would carry an explicit non-NASA label across every view; none are present in the current index.",
     guarantees: [
-      "Disabling DEMO_MODE alone never upgrades unverified records to VERIFIED.",
-      "Demo fixture citations preserve SOURCE LOCATOR NOT AVAILABLE when no source is connected.",
+      "A record is never upgraded to VERIFIED by configuration alone; it needs a verified source locator.",
+      "Citations without a connected source keep SOURCE LOCATOR NOT AVAILABLE.",
     ],
   },
   {
@@ -184,7 +183,7 @@ const PROVENANCE_SPECS = [
   ],
   [
     "DEMO_FIXTURE",
-    "Fictional interface/architecture fixture. Always retains 'DEMO FIXTURE — FICTIONAL DATA — NOT NASA MEASUREMENTS'.",
+    "Reserved status for non-NASA interface examples (always labelled as such). No record in the current index carries it.",
   ],
   [
     "ILLUSTRATIVE_SIMULATION",
@@ -207,7 +206,7 @@ const ABSTENTION_CODES = [
   ],
   [
     "INSUFFICIENT_PROVENANCE_MISMATCH",
-    "User requested verified NASA data, but matched records hold DEMO_FIXTURE provenance only.",
+    "User requested verified NASA data, but the matched records are not verified NASA data.",
   ],
   [
     "INSUFFICIENT_CAUSAL_UNSUPPORTED",
@@ -223,8 +222,7 @@ const ABSTENTION_CODES = [
   ],
 ] as const;
 
-export function HowItWorksView({ records }: { records: DemoInvestigation[] }) {
-  const datasetScope = deriveDatasetScope(records);
+export function HowItWorksView({ datasetScope }: { datasetScope: DatasetScopeSummary }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const current = WORKFLOW_STAGES[activeIndex];
 

@@ -2,15 +2,15 @@
 
 import { ArrowRight, Compass, FlaskConical, GitCompareArrows, ShieldAlert } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
+import { EarthApplications, HardwareMap } from "@/components/science/science-context";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
 import {
-  buildTechnologyMap,
   type TechDomainKey,
+  type TechnologyMapReport,
   type TechMapRecordNode,
 } from "@/lib/science/technology-map";
 import { setCompareIds } from "@/lib/state/compare-selection";
@@ -21,8 +21,7 @@ const DOMAIN_COLORS: Record<TechDomainKey, { stroke: string; badge: string }> = 
   SUPPRESSION: { stroke: "#34d399", badge: "border-emerald-400/40 bg-emerald-500/15 text-emerald-200" },
 };
 
-export function TechnologyMapView({ records }: { records: DemoInvestigation[] }) {
-  const report = useMemo(() => buildTechnologyMap(records), [records]);
+export function TechnologyMapView({ report }: { report: TechnologyMapReport }) {
   const [activeDomain, setActiveDomain] = useState<TechDomainKey>("PREVENTION");
   const [selectedRecordId, setSelectedRecordId] = useState<string>(report.allNodes[0]?.id ?? "");
 
@@ -260,11 +259,11 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
                       <dd className="text-right font-mono text-[#f4f8ff]">{activeNode.airflowDisplay}</dd>
                     </div>
                     <div className="flex justify-between gap-3 py-2.5">
-                      <dt className="text-[#8ea5c7]">Sensors / Apparatus Channels</dt>
+                      <dt className="text-[#8ea5c7]">Mapped measurement values</dt>
                       <dd className="text-right font-mono text-amber-200">
                         {activeNode.measurementChannelCount > 0
-                          ? `${activeNode.measurementChannelCount} measurement channel(s)`
-                          : "NOT REPORTED (0 channels)"}
+                          ? `${activeNode.measurementChannelCount} measurement value(s) mapped`
+                          : "NO PER-TEST ROWS (metadata & protocol only)"}
                       </dd>
                     </div>
                   </dl>
@@ -294,6 +293,8 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
               )}
             </Card>
           </div>
+          <HardwareMap />
+          <EarthApplications />
         </div>
       </main>
     </div>

@@ -75,7 +75,7 @@ export function EvidencePipeline({ documents }: { documents: number }) {
                   <span className="lp-stage-text">{text}</span>
                   <span className="lp-stage-more" aria-hidden={!isActive}>
                     <span>
-                      <span className="lp-mono lp-stage-more-label">{"Design rules // demo mode"}</span>
+                      <span className="lp-mono lp-stage-more-label">{"Design rules"}</span>
                       <span className="lp-stage-rules">
                         {rules.map((r) => <span key={r} className="lp-mono">{r}</span>)}
                       </span>

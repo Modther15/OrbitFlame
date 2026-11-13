@@ -363,6 +363,14 @@ function ConditionChartPanel({
   const missingPoints = series.points.filter((p) => p.missing);
   const allDemo = series.points.every((p) => p.isDemoFixture);
   const showTargetValues = reducedMotion || revealActive;
+  // Fixed axis domain from the TARGET values so the ticks do not collapse to "0" while the bars are still animating from 0.
+  const yMax = useMemo(() => {
+    const m = Math.max(0, ...series.points.map((p) => (p.missing || p.plottedValue === null ? 0 : p.plottedValue)));
+    if (m <= 0) return 1;
+    const mag = 10 ** Math.floor(Math.log10(m));
+    const f = m / mag;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag;
+  }, [series.points]);
 
   const chartData = useMemo<PlottedConditionPoint[]>(
     () =>
@@ -445,6 +453,9 @@ function ConditionChartPanel({
                     axisLine={false}
                     tickLine={false}
                     width={46}
+                    domain={[0, yMax]}
+                    tickCount={5}
+                    tickFormatter={(v: number) => String(Number(v.toFixed(2)))}
                     unit={series.plottedUnit ? ` ${series.plottedUnit}` : ""}
                   />
                   <Tooltip

@@ -15,6 +15,8 @@ import { validateEvidenceSufficiency } from "@/lib/assistant/evidence-validator"
 import { retrieveEvidenceForQuestion } from "@/lib/assistant/retrieval";
 import type { InvestigationRepository } from "@/lib/data/repository";
 import { DEMO_WARNING } from "@/lib/demo/dataset";
+import { buildDeterministicAnswer, detectMissionHabitat, habitatViewFor, isHintQuery, hintResponse, missionAnswer } from "@/lib/assistant/deterministic-answer";
+import { budgetRemaining, recordUsage, resolveModel, BUDGET_USD } from "@/lib/assistant/spend-guard";
 
 export type AssistantProviderErrorCode =
   | "CONFIGURATION_REQUIRED"
@@ -74,11 +76,18 @@ export class OpenAiResponsesProvider implements AssistantLlmProvider {
       );
     }
 
-    const model = process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
+    const model = resolveModel(process.env.OPENAI_MODEL || DEFAULT_MODEL);
+    if (budgetRemaining() <= 0) {
+      throw new AssistantProviderError(
+        `Local OpenAI budget of $${BUDGET_USD.toFixed(2)} is used up. AI synthesis is disabled; deterministic database answers still work.`,
+        "RATE_LIMITED",
+        429,
+      );
+    }
     const client = new OpenAI({
       apiKey,
       timeout: 25_000,
-      maxRetries: 1,
+      maxRetries: 0,
     });
 
     try {
@@ -100,7 +109,7 @@ export class OpenAiResponsesProvider implements AssistantLlmProvider {
               schema: OPENAI_ASSISTANT_JSON_SCHEMA,
             },
           },
-          max_output_tokens: 1400,
+          max_output_tokens: 2500,
           tools: [],
           tool_choice: "none",
           store: false,
@@ -108,6 +117,15 @@ export class OpenAiResponsesProvider implements AssistantLlmProvider {
         { signal: params.signal },
       );
 
+      recordUsage(model, response.usage?.input_tokens ?? 0, response.usage?.output_tokens ?? 0);
+      if (response.status === "incomplete") {
+        console.error("[assistant] model output truncated:", JSON.stringify(response.incomplete_details));
+        throw new AssistantProviderError(
+          "Model output was truncated before the JSON completed (token limit). Try a narrower question.",
+          "MALFORMED_MODEL_OUTPUT",
+          502,
+        );
+      }
       const rawText = response.output_text?.trim();
       if (!rawText) {
         throw new AssistantProviderError(
@@ -121,6 +139,7 @@ export class OpenAiResponsesProvider implements AssistantLlmProvider {
       try {
         jsonValue = JSON.parse(rawText);
       } catch {
+        console.error("[assistant] non-JSON output head:", rawText.slice(0, 200));
         throw new AssistantProviderError(
           "Model returned non-JSON structured output.",
           "MALFORMED_MODEL_OUTPUT",
@@ -182,7 +201,7 @@ export class OpenAiResponsesProvider implements AssistantLlmProvider {
   }
 }
 
-export async function runAssistantPipeline(
+async function runAssistantPipelineCore(
   rawInput: unknown,
   options?: {
     repository?: InvestigationRepository;
@@ -193,33 +212,6 @@ export async function runAssistantPipeline(
   const requestId = crypto.randomUUID();
   const parsedRequest = AssistantRequestSchema.parse(rawInput);
   const provider = options?.provider ?? new OpenAiResponsesProvider();
-
-  if (!provider.isConfigured()) {
-    return {
-      httpStatus: 503,
-      body: {
-        requestId,
-        mode: "DEMO_FIXTURE_ONLY",
-        status: "CONFIGURATION_REQUIRED",
-        sufficiency: "PROVIDER_UNAVAILABLE",
-        provenanceBanner: DEMO_WARNING,
-        answer:
-          "Server configuration required: OPENAI_API_KEY is not set in this environment. OrbitFlame will not fabricate AI responses without a verified server-side LLM connection.",
-        claims: [],
-        citations: [],
-        limitations: [
-          "Set OPENAI_API_KEY (and optional OPENAI_MODEL) on the server to enable OpenAI Responses API synthesis.",
-        ],
-        abstained: true,
-        abstentionReason: "OPENAI_API_KEY is missing in server configuration.",
-        retrievedInvestigations: [],
-        configStatus: {
-          configured: false,
-          message: "OPENAI_API_KEY is missing in server environment variables.",
-        },
-      },
-    };
-  }
 
   const retrieval = await retrieveEvidenceForQuestion(parsedRequest.question, {
     history: parsedRequest.history,
@@ -236,7 +228,7 @@ export async function runAssistantPipeline(
   }));
   const provenanceBanner =
     retrieval.mode === "VERIFIED_INDEXED_DATA"
-      ? "VERIFIED INDEXED DATA // MIXED PROVENANCE CHECKED PER CITATION"
+      ? "VERIFIED NASA PSI EXPERIMENTAL DATA // PROVENANCE CHECKED PER CITATION"
       : DEMO_WARNING;
 
   // Deterministic pre-flight abstention: skips LLM call when evidence is absent, missing, incompatible, causal, or unverified-only.
@@ -263,7 +255,9 @@ export async function runAssistantPipeline(
       httpStatus: 200,
       body: {
         requestId,
-        mode: retrieval.mode,
+        mode: "deterministic_fallback",
+        dataMode: retrieval.mode,
+        fallbackReason: `pre-flight abstention: ${validation.sufficiency}`,
         status: "ABSTAINED",
         sufficiency: validation.sufficiency,
         provenanceBanner,
@@ -274,6 +268,30 @@ export async function runAssistantPipeline(
         abstained: true,
         abstentionReason: validation.abstentionReason,
         retrievedInvestigations,
+      },
+    };
+  }
+
+  // No LLM configured: the wrapper (runAssistantPipeline) converts this into the deterministic evidence answer.
+  if (!provider.isConfigured()) {
+    return {
+      httpStatus: 503,
+      body: {
+        requestId,
+        mode: "deterministic_fallback",
+        dataMode: retrieval.mode,
+        fallbackReason: "OPENAI_API_KEY is not configured",
+        status: "CONFIGURATION_REQUIRED",
+        sufficiency: "PROVIDER_UNAVAILABLE",
+        provenanceBanner,
+        answer: "OPENAI_API_KEY is not configured on the server.",
+        claims: [],
+        citations: [],
+        limitations: validation.limitations,
+        abstained: true,
+        abstentionReason: "OPENAI_API_KEY is not configured on the server.",
+        retrievedInvestigations,
+        configStatus: { configured: false, message: "OPENAI_API_KEY is not configured on the server." },
       },
     };
   }
@@ -305,7 +323,9 @@ export async function runAssistantPipeline(
       httpStatus: 200,
       body: {
         requestId,
-        mode: retrieval.mode,
+        mode: "llm",
+        dataMode: retrieval.mode,
+        fallbackReason: null,
         status: bound.abstained ? "ABSTAINED" : "ANSWERED",
         sufficiency: validation.sufficiency,
         provenanceBanner,
@@ -324,7 +344,9 @@ export async function runAssistantPipeline(
         httpStatus: err.httpStatus,
         body: {
           requestId,
-          mode: retrieval.mode,
+          mode: "deterministic_fallback",
+          dataMode: retrieval.mode,
+          fallbackReason: `${err.code}: ${err.message}`,
           status: err.code === "CONFIGURATION_REQUIRED" ? "CONFIGURATION_REQUIRED" : "PROVIDER_ERROR",
           sufficiency: "PROVIDER_UNAVAILABLE",
           provenanceBanner,
@@ -343,5 +365,57 @@ export async function runAssistantPipeline(
       };
     }
     throw err;
+  }
+}
+
+
+/**
+ * Public entry point: NEVER fails. With a working OPENAI key the answer is LLM-synthesised over retrieved evidence (mode 'llm');
+ * in every other case (key missing, provider error / timeout / malformed output / budget exceeded, retrieval error, vague query) it
+ * returns HTTP 200 with a deterministic evidence-only answer (mode 'deterministic_fallback') and logs the cause server-side.
+ */
+export async function runAssistantPipeline(
+  rawInput: unknown,
+  options?: { repository?: InvestigationRepository; provider?: AssistantLlmProvider; signal?: AbortSignal },
+): Promise<{ httpStatus: number; body: AssistantApiResponse }> {
+  let question = "";
+  let history: AssistantTurnInput[] = [];
+  let ids: string[] | undefined;
+  try {
+    const parsed = AssistantRequestSchema.parse(rawInput);
+    question = parsed.question;
+    history = parsed.history;
+    ids = parsed.investigationIds;
+    if (isHintQuery(question, ids)) {
+      return { httpStatus: 200, body: hintResponse("greeting or vague query: no LLM call needed") };
+    }
+    // Habitat / mission-risk questions (why dangerous, which PSI experiments bound it, Moon / Mars / ISS / EVA ...) are never pre-flight-abstained: they are delegated to the
+    // shared FastAPI readout (physics + ranked PSI list with row citations) and fall back to the precomputed snapshot readout. The LLM path / spend guard is not used for them.
+    const missionHabitat = detectMissionHabitat(question, ids);
+    if (missionHabitat) {
+      const mission = await missionAnswer(missionHabitat, question, history, ids).catch(() => null);
+      if (mission) return { httpStatus: 200, body: mission };
+    }
+    const out = await runAssistantPipelineCore(parsed, options);
+    const b = out.body;
+    const unavailable = b.status === "PROVIDER_ERROR" || b.status === "CONFIGURATION_REQUIRED" || b.sufficiency === "PROVIDER_UNAVAILABLE";
+    if (unavailable || b.sufficiency === "INSUFFICIENT_NO_RECORDS") {
+      const why = unavailable ? (b.fallbackReason ?? b.abstentionReason ?? "provider unavailable") : "no retrieved records for the question";
+      console.error(`[assistant] provider unavailable -> fallback (${why})`);
+      return { httpStatus: 200, body: await buildDeterministicAnswer({ question, history, investigationIds: ids, repository: options?.repository, reason: why }) };
+    }
+    // An LLM abstention on a habitat question (e.g. "how does PSI-159 apply to the Moon Base?") must not block the user: answer from the deterministic evidence builder instead.
+    if (out.body.mode === "llm" && out.body.status === "ABSTAINED" && /\b(moon|lunar|artemis|mars|martian|iss|eva|spacesuit|earth|habitat|0\.16\s*g|0\.38\s*g)\b/i.test(question)) {
+      return { httpStatus: 200, body: await buildDeterministicAnswer({ question, history, investigationIds: ids, repository: options?.repository, reason: "LLM abstained on a habitat question; evidence-only answer used" }) };
+    }
+    if (out.body.mode === "llm") {
+      const hv = await habitatViewFor(question, history, ids).catch(() => null);
+      if (hv) out.body.habitatView = hv;
+    }
+    return out;
+  } catch (e) {
+    const why = `${e instanceof Error ? e.name : "error"}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
+    console.error(`[assistant] pipeline error -> deterministic fallback (${why})`);
+    return { httpStatus: 200, body: await buildDeterministicAnswer({ question, history, investigationIds: ids, repository: options?.repository, reason: why }) };
   }
 }

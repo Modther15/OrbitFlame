@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { HowItWorksView } from "@/components/ecosystem/how-it-works-view";
-import { investigationRepository } from "@/lib/data/repository";
+import { listSummaries } from "@/lib/data/repository";
+import { deriveDatasetScope } from "@/lib/science/provenance";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HowItWorksPage() {
-  const records = await investigationRepository.list();
-  return <HowItWorksView records={records} />;
+  const records = await listSummaries();
+  const datasetScope = deriveDatasetScope(records);
+  return <HowItWorksView datasetScope={datasetScope} />;
 }

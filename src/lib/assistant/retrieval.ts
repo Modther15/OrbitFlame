@@ -332,7 +332,39 @@ function extractEvidenceItemsForRecord(rec: DemoInvestigation, intent: QueryInte
     intent.requestedParameters.includes("findings") ||
     intent.requestedParameters.includes("missing_metadata");
 
-  for (const run of rec.testRuns) {
+  // Real PSI tables can hold hundreds of rows per investigation: send whole-table aggregates plus a bounded sample of rows.
+  const MAX_EVIDENCE_RUNS = 6;
+  const present = (run: (typeof rec.testRuns)[number]) => run.conditions.filter((c) => c.missingStatus === "PRESENT").length + run.measurements.length;
+  const sampleRuns = rec.testRuns.length > MAX_EVIDENCE_RUNS ? [...rec.testRuns].sort((x, y) => present(y) - present(x)).slice(0, MAX_EVIDENCE_RUNS) : rec.testRuns;
+  if (rec.testRuns.length > 0) {
+    const rng = (key: string, unit: string) => {
+      const v = rec.testRuns.flatMap((r) => r.conditions.filter((c) => c.parameterKey === key && c.missingStatus === "PRESENT" && c.valueOriginal !== null).map((c) => c.valueOriginal as number));
+      const r2 = (x: number) => Math.round(x * 100) / 100;
+      return v.length ? `${key}: ${r2(Math.min(...v))}–${r2(Math.max(...v))} ${unit} (stated in ${v.length}/${rec.testRuns.length} rows)` : `${key}: not stated in any of ${rec.testRuns.length} rows`;
+    };
+    items.push({
+      evidenceId: `EV-${rec.id}-AGGREGATE`,
+      investigationId: rec.id,
+      investigationTitle: rec.name,
+      family: rec.family,
+      testRunId: null,
+      fieldKey: "dataset_aggregate",
+      fieldLabel: "Whole-table aggregate (all rows in the PSI database)",
+      valueDisplay: `${rec.testRuns.length} rows from ${rec.source?.sourceTitle ?? "NASA PSI"} | ${rng("oxygen_concentration", "%")} | ${rng("pressure", "kPa")} | ${rng("airflow", "cm/s")} | gravity: not stated in tables`,
+      numericValue: rec.testRuns.length,
+      unitOriginal: "rows",
+      valueSi: null,
+      unitSi: null,
+      missingStatus: "PRESENT",
+      provenanceStatus: rec.provenanceStatus,
+      provenanceLabel: provLabel,
+      isDemoFixture: rec.provenanceStatus === "DEMO_FIXTURE",
+      isVerified: verified,
+      sourceLocator: rec.source,
+    });
+  }
+
+  for (const run of sampleRuns) {
     for (const cond of run.conditions) {
       const include =
         wantsAllConditions ||

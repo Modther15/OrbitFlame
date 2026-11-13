@@ -12,17 +12,16 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
 import {
-  buildEvidenceGapRadar,
   RADAR_DOMAINS,
   RADAR_GRAVITY_AXES,
   type EvidenceGapCell,
+  type EvidenceGapRadarReport,
   type GapCoverageStatus,
 } from "@/lib/science/evidence-gaps";
 import { setCompareIds } from "@/lib/state/compare-selection";
@@ -41,8 +40,9 @@ const BADGE_STYLES: Record<GapCoverageStatus, string> = {
   UNAVAILABLE: "border-rose-400/35 bg-rose-500/15 text-rose-200",
 };
 
-export function EvidenceGapsView({ records }: { records: DemoInvestigation[] }) {
-  const radar = useMemo(() => buildEvidenceGapRadar(records), [records]);
+export type ProxyNote = { label: string; rows: number; investigations: { id: string; n: number }[] };
+
+export function EvidenceGapsView({ radar, proxyNotes = [] }: { radar: EvidenceGapRadarReport; proxyNotes?: ProxyNote[] }) {
   const [selectedCellId, setSelectedCellId] = useState<string>("LUNAR_GRAVITY__PREVENTION");
 
   const activeCell: EvidenceGapCell =
@@ -123,7 +123,7 @@ export function EvidenceGapsView({ records }: { records: DemoInvestigation[] }) 
                   GRAVITY ENVIRONMENT × SAFETY DOMAIN MATRIX (CLICK ANY CELL TO TRACE GAP PATHWAY)
                 </h2>
                 <p className="mt-1 text-xs text-[#8ea5c7]">
-                  Counts derive exclusively from active indexed records. Demo fixtures cannot rise above ANALOGOUS.
+                  Counts derive exclusively from active indexed records. Non-NASA illustrative records cannot rise above ANALOGOUS.
                 </p>
               </div>
             </div>
@@ -196,6 +196,17 @@ export function EvidenceGapsView({ records }: { records: DemoInvestigation[] }) 
               </table>
             </div>
 
+            {proxyNotes.length > 0 && (
+              <div data-testid="gap-proxy-note" className="mt-3 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-xs leading-5 text-[#fff1d0]">
+                <span className="font-mono text-[10px] font-bold tracking-wider text-amber-300 uppercase">Effective-gravity proxy rows (heuristic, NOT counted as coverage above): </span>
+                {proxyNotes.map((n) => (
+                  <span key={n.label} className="mr-3">
+                    {n.label}: {n.rows} rows ({n.investigations.map((i) => `${i.id} ${i.n}`).join(", ")});
+                  </span>
+                ))}
+                These are 0 g flight rows whose forced-flow speed maps to a buoyancy-equivalent gravity; they are not measured Lunar / Mars / Earth data, so the Lunar and Normal gravity cells keep their gaps.
+              </div>
+            )}
             {radar.unclassifiedPartialRecords.length > 0 && (
               <div className="mt-3 rounded-xl border border-white/10 bg-[#050d21]/85 px-4 py-3 text-xs text-[#9cb2d2]">
                 <span className="font-mono text-[10px] font-bold tracking-wider text-[#52b6ff] uppercase">

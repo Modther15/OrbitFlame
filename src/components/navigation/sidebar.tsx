@@ -1,5 +1,6 @@
 "use client";
 
+import { DataSourceBadge } from "@/components/ui/data-source-badge";
 import { Activity, Archive, BookOpenText, Compass, FlaskConical, GitCompareArrows, LayoutDashboard, Map, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -130,6 +131,7 @@ export function Sidebar() {
           );
         })}
       </div>
+      <DataSourceBadge className="mt-5 hidden lg:block" />
     </aside>
   );
 }

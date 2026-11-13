@@ -17,11 +17,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CitationEvidenceDrawer } from "@/components/assistant/citation-evidence-drawer";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
+import { habitatKeyFromParam } from "@/components/mission/habitat-keys";
+import { MissionPredictorLazy } from "@/components/mission/mission-predictor-lazy";
+import { Connections, GravityLadder } from "@/components/science/science-context";
 import { MissionPathwaySvg } from "@/components/mission/mission-pathway-svg";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
+import type { DataSourceMode } from "@/lib/api/backend-types";
 import type { AssistantApiResponse, AssistantCitation } from "@/lib/assistant/assistant-response-schema";
 import {
   matchMissionScenario,
@@ -33,12 +36,14 @@ import {
   type SafetyDomainOption,
 } from "@/lib/science/mission-matcher";
 import type { GravityRegimeClass } from "@/lib/science/provenance";
+import type { InvestigationSummary } from "@/lib/data/summary";
 import { setCompareIds } from "@/lib/state/compare-selection";
 
 type MissionLabViewProps = {
-  records: DemoInvestigation[];
+  records: InvestigationSummary[];
   isAiConfigured: boolean;
   initialHabitat?: string;
+  dataSource?: DataSourceMode;
 };
 
 const CLASSIFICATION_STYLES: Record<EvidenceClassification, string> = {
@@ -151,7 +156,7 @@ const TEST_ASSUMPTION_PRESETS: readonly {
   },
 ];
 
-export function MissionLabView({ records, isAiConfigured, initialHabitat }: MissionLabViewProps) {
+export function MissionLabView({ records, isAiConfigured, initialHabitat, dataSource = "fixture" }: MissionLabViewProps) {
   const initialHabId = MISSION_HABITATS.some((h) => h.id === initialHabitat)
     ? (initialHabitat as MissionHabitatId)
     : "ISS";
@@ -288,6 +293,9 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                     </p>
                     <p className="mt-0.5 text-[11px] text-[#8ea5c7]">
                       All inputs below represent user-entered assumptions — never NASA specifications or measurements.
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] text-[#6f88ad]">
+                      Matcher dimensions: gravity regime, pillar, O2 %, total pressure, airflow, material keyword. Each is compared, unit-checked, with the investigation-level median conditions of the PSI tables.
                     </p>
                   </div>
                   <button
@@ -620,6 +628,17 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                   </p>
                 </Card>
               </div>
+
+              <MissionPredictorLazy
+                key={habitatKeyFromParam(initialHabitat, scenario.habitat)}
+                initialHabitat={habitatKeyFromParam(initialHabitat, scenario.habitat)}
+                dataSource={dataSource}
+                metadataOnly={records.filter((r) => r.rowStatus === "metadata_only").map((r) => ({ id: r.id, name: r.name }))}
+                totalInvestigations={records.length}
+              />
+
+              <GravityLadder records={records} />
+              <Connections />
 
               {/* Optional Evidence-Only AI Summary of Matched Scope */}
               <Card className="border border-[#36a9ff]/25 bg-[#09152e]/85 p-5 backdrop-blur-md">

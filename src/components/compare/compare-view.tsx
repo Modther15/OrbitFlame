@@ -16,15 +16,20 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { CompareVisualizations } from "@/components/compare/compare-visualizations";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
+import { ExperimentDesignMatrix } from "@/components/compare/design-matrix";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { DemoInvestigation } from "@/lib/api/schemas";
+import type { InvestigationSummary } from "@/lib/data/summary";
+import { loadVariableSummary } from "@/lib/api/backend-client";
+import { fetchFullInvestigation } from "@/lib/data/summary-fetch";
+import type { VarSummaryPayload } from "@/lib/data/variables";
 import {
   buildCompareCsvExport,
   buildCompareJsonExport,
@@ -34,8 +39,13 @@ import {
 } from "@/lib/science/compare";
 import { setCompareIds, useCompareSelection } from "@/lib/state/compare-selection";
 
+const CompareVisualizations = dynamic(
+  () => import("@/components/compare/compare-visualizations").then((m) => m.CompareVisualizations),
+  { ssr: false, loading: () => <div className="mt-6 h-64 animate-pulse rounded-2xl border border-white/10 bg-[#09152e]/60" aria-hidden="true" /> },
+);
+
 type CompareViewProps = {
-  records: DemoInvestigation[];
+  records: InvestigationSummary[];
   initialIdsParam: string | null;
 };
 
@@ -124,10 +134,47 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
     }
   }, [parsedUrl.hasUrlParam, parsedUrl.validIds, storedIds]);
 
+  // Full runs/measurements are loaded only for the 2-4 selected ids (cached per id).
+  const [fullById, setFullById] = useState<Record<string, DemoInvestigation>>({});
+  const activeKey = activeIds.join("|");
+  useEffect(() => {
+    let alive = true;
+    for (const id of activeKey ? activeKey.split("|") : []) {
+      fetchFullInvestigation(id).then((rec) => {
+        if (alive && rec) setFullById((prev) => (prev[id] ? prev : { ...prev, [id]: rec }));
+      });
+    }
+    return () => {
+      alive = false;
+    };
+  }, [activeKey]);
+
+  const [varSummary, setVarSummary] = useState<VarSummaryPayload | null>(null);
+  const [varLoading, setVarLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    loadVariableSummary()
+      .then((r) => alive && setVarSummary(r.data))
+      .catch(() => undefined)
+      .finally(() => alive && setVarLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const knownIds = useMemo(() => new Set(records.map((r) => r.id)), [records]);
+  const fullReady = activeIds.every((id) => Boolean(fullById[id]) || !knownIds.has(id));
   const selectedRecords = useMemo(() => {
     const byId = new Map(records.map((r) => [r.id, r]));
-    return activeIds.map((id) => byId.get(id)).filter((r): r is DemoInvestigation => Boolean(r));
-  }, [records, activeIds]);
+    return activeIds
+      .map((id) => {
+        if (fullById[id]) return fullById[id];
+        const slim = byId.get(id);
+        return slim ? ({ ...slim, testRuns: [] } as DemoInvestigation) : undefined;
+      })
+      .filter((r): r is DemoInvestigation => Boolean(r));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records, activeKey, fullById]);
 
   const availableToAdd = useMemo(
     () => records.filter((r) => !activeIds.includes(r.id)).sort((a, b) => a.id.localeCompare(b.id)),
@@ -135,19 +182,19 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
   );
 
   const matrixRows = useMemo(
-    () => (selectedRecords.length >= 2 ? buildComparisonMatrix(selectedRecords) : []),
-    [selectedRecords],
+    () => (selectedRecords.length >= 2 && fullReady ? buildComparisonMatrix(selectedRecords) : []),
+    [selectedRecords, fullReady],
   );
   const summary = useMemo(
-    () => (selectedRecords.length >= 2 ? buildComparisonSummary(selectedRecords, matrixRows) : null),
-    [selectedRecords, matrixRows],
+    () => (selectedRecords.length >= 2 && fullReady ? buildComparisonSummary(selectedRecords, matrixRows) : null),
+    [selectedRecords, matrixRows, fullReady],
   );
 
   const allVerified =
     selectedRecords.length > 0 &&
     selectedRecords.every((r) => r.provenanceStatus === "NASA_VERIFIED_DATA" && r.source?.verificationStatus === "VERIFIED");
-  const hasDemoFixtures = selectedRecords.length === 0 || selectedRecords.some((r) => r.provenanceStatus === "DEMO_FIXTURE");
-  const badgeStatus = allVerified ? "verified" : hasDemoFixtures ? "demo" : "unverified";
+  const hasDemoFixtures = selectedRecords.some((r) => r.provenanceStatus === "DEMO_FIXTURE");
+  const badgeStatus = allVerified || (selectedRecords.length === 0 && records.some((r) => r.provenanceStatus === "NASA_VERIFIED_DATA")) ? "verified" : hasDemoFixtures ? "demo" : "unverified";
 
   function applySelection(nextIds: string[]) {
     const clean = replaceIds(nextIds);
@@ -189,7 +236,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
   }
 
   function handleExportCsv() {
-    if (selectedRecords.length < 2) return;
+    if (selectedRecords.length < 2 || !fullReady) return;
     const content = buildCompareCsvExport(selectedRecords, matrixRows);
     triggerDownload(`orbitflame-compare-${selectedRecords.map((r) => r.id).join("-")}.csv`, content, "text/csv;charset=utf-8");
   }
@@ -329,7 +376,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5">
                   <span className="font-mono text-[10px] text-amber-300">
-                    {rec.provenanceStatus === "DEMO_FIXTURE" ? "DEMO FIXTURE" : rec.provenanceStatus}
+                    {rec.provenanceStatus === "DEMO_FIXTURE" ? "DEMO FIXTURE" : rec.provenanceStatus === "NASA_VERIFIED_DATA" ? (rec.rowStatus === "metadata_only" ? "METADATA & PROTOCOL ONLY IN PSI" : "VERIFIED NASA PSI EXPERIMENTAL DATA") : rec.provenanceStatus}
                   </span>
                   <Link
                     href={`/investigations/${rec.id}`}
@@ -382,7 +429,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
             </span>
             <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-[#f4f8ff]">
               {selectedRecords.length === 0
-                ? "Select 2 to 3 investigations to compare"
+                ? "Select 2 to 4 investigations to compare"
                 : "Add a second investigation to unlock the comparison matrix"}
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#9cb2d2]">
@@ -394,17 +441,17 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
                 <>
                   <button
                     type="button"
-                    onClick={() => applySelection(["D-001", "D-004"])}
+                    onClick={() => applySelection(["PSI-25", "PSI-26"])}
                     className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[linear-gradient(110deg,#0a1b3a_0%,#174585_45%,#2563eb_72%,#ff5500_100%)] bg-[length:240%_100%] bg-[position:0%_50%] px-5 py-2 text-xs font-semibold tracking-wider !text-white uppercase shadow-[0_8px_22px_-10px_rgba(37,99,235,0.45)] transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] hover:-translate-y-0.5 hover:bg-[position:100%_50%]"
                   >
-                    <Plus size={14} /> Compare D-001 &amp; D-004
+                    <Plus size={14} /> Compare BASS-II &amp; BASS (PSI-25, PSI-26)
                   </button>
                   <button
                     type="button"
-                    onClick={() => applySelection(["D-001", "D-006", "D-009"])}
+                    onClick={() => applySelection(["PSI-69", "PSI-39", "PSI-159"])}
                     className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-semibold tracking-wider text-[#e6effc] uppercase transition-colors hover:border-[#ff8a32]/50 hover:bg-white/[0.12] hover:text-white"
                   >
-                    <Plus size={14} /> Compare D-001, D-006 &amp; D-009
+                    <Plus size={14} /> Compare FLEX, CFI &amp; CFI-G (PSI-69, PSI-39, PSI-159)
                   </button>
                 </>
               ) : (
@@ -446,6 +493,8 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
                 </div>
               </div>
             )}
+
+            <ExperimentDesignMatrix records={selectedRecords} vars={varSummary} loading={varLoading} />
 
             <CompareVisualizations records={selectedRecords} matrixRows={matrixRows} />
 

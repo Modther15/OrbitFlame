@@ -1,16 +1,18 @@
 import { CircleDot, ShieldCheck } from "lucide-react";
 
-type Status = "verified" | "demo" | "unverified" | "not-reported" | "empty";
+type Status = "verified" | "demo" | "benchmark" | "direct" | "unverified" | "not-reported" | "empty";
 const labels: Record<Status, string> = {
-  verified: "NASA VERIFIED DATA",
+  verified: "VERIFIED NASA PSI EXPERIMENTAL DATA",
   demo: "DEMO FIXTURE — FICTIONAL DATA — NOT NASA MEASUREMENTS",
+  benchmark: "VERIFIED NASA PSI EXPERIMENTAL DATA",
+  direct: "VERIFIED NASA PSI EXPERIMENTAL DATA",
   unverified: "INFERRED / UNVERIFIED",
   "not-reported": "NOT REPORTED",
   empty: "COLLECTION NOT CONNECTED",
 };
 
 export function StatusBadge({ status }: { status: Status }) {
-  const verified = status === "verified";
+  const verified = status === "verified" || status === "direct" || status === "benchmark";
   return (
     <span
       className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-3.5 py-1 font-mono text-[10px] font-semibold tracking-[.12em] ${

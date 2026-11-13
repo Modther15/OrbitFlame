@@ -98,7 +98,17 @@ export type ValidatedClaim = z.infer<typeof ValidatedClaimSchema>;
 
 export const AssistantApiResponseSchema = z.object({
   requestId: z.string(),
-  mode: z.enum(["DEMO_FIXTURE_ONLY", "VERIFIED_INDEXED_DATA", "EMPTY"]),
+  /** How the answer was produced: 'llm' = OpenAI synthesis over retrieved evidence; 'deterministic' = evidence-only answer built by the shared FastAPI builder (habitat risk readout);
+   *  'deterministic_fallback' = evidence-only answer used because the LLM path was unavailable (or FastAPI was unreachable and the static snapshot was used). */
+  mode: z.enum(["llm", "deterministic", "deterministic_fallback"]),
+  /** Provenance class of the retrieved records (formerly `mode`). */
+  dataMode: z.enum(["DEMO_FIXTURE_ONLY", "VERIFIED_INDEXED_DATA", "EMPTY"]),
+  /** Why the deterministic fallback ran (missing key, provider error, timeout, malformed output, budget, vague query). */
+  fallbackReason: z.string().nullable().optional(),
+  /** True for greeting / vague queries: a short "ask about PSI-xx" hint rather than an evidence answer. */
+  hint: z.boolean().optional(),
+  /** Deterministic habitat-ranking paragraph (physics_ranker, actual-vs-effective gravity caveat), attached to LLM answers about a habitat. */
+  habitatView: z.string().nullable().optional(),
   status: z.enum(["ANSWERED", "ABSTAINED", "CONFIGURATION_REQUIRED", "PROVIDER_ERROR"]),
   sufficiency: EvidenceSufficiencyStateSchema,
   provenanceBanner: z.string(),

@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "orbitflame_compare_ids";
 const CHANGE_EVENT = "orbitflame:compare-selection-change";
-const MAX_COMPARE_ITEMS = 3;
+const MAX_COMPARE_ITEMS = 4;
 
 let cachedRaw = "[]";
 let cachedParsed: string[] = [];

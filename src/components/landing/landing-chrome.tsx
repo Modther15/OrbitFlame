@@ -329,7 +329,7 @@ export function LandingNav() {
       </Link>
       <nav aria-label="Main navigation">{links()}</nav>
       <div className="lp-nav-right">
-        <span className="lp-mono lp-nav-demo"><i /> Demo mode</span>
+        <span className="lp-mono lp-nav-demo"><i /> Real NASA PSI data</span>
         <Link href="/explore" className="lp-btn lp-btn--dark lp-btn--sm">Explore <ArrowUpRight size={13} /></Link>
         <button
           type="button"
@@ -344,7 +344,7 @@ export function LandingNav() {
       </div>
       <nav id="lp-nav-sheet" className={`lp-nav-sheet${open ? " is-open" : ""}`} aria-label="Section menu" hidden={!open}>
         {links(() => setOpen(false))}
-        <span className="lp-mono lp-nav-sheet-note"><i /> {"Demo mode // fictional fixtures"}</span>
+        <span className="lp-mono lp-nav-sheet-note"><i /> {"Real NASA PSI data // not fixtures"}</span>
       </nav>
     </header>
   );

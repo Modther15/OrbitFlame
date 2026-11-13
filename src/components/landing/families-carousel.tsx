@@ -86,7 +86,7 @@ export function FamiliesCarousel({ families }: { families: FamilyCard[] }) {
           <dl className="lp-specs">
             <div><dt className="lp-mono">Fuel phase</dt><dd><i className="lp-phase-dot" aria-hidden="true" />{f.phase}</dd></div>
             <div><dt className="lp-mono">Platform</dt><dd>{f.platform}</dd></div>
-            <div><dt className="lp-mono">Demo records</dt><dd>{String(f.records).padStart(2, "0")}</dd></div>
+            <div><dt className="lp-mono">Records</dt><dd>{String(f.records).padStart(2, "0")}</dd></div>
           </dl>
           <Link href={`/explore?family=${f.key}`} className="lp-btn lp-btn--dark lp-btn--sm">Explore program <ArrowUpRight size={14} /></Link>
         </div>
