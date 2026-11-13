@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function MissionLabPage({
   searchParams,
 }: {
-  searchParams: Promise<{ habitat?: string }>;
+  searchParams: Promise<{ habitat?: string; tab?: string }>;
 }) {
   const [records, params] = await Promise.all([listSummaries(), searchParams]);
   const dataSource = await getDatasetSource();
@@ -20,6 +20,7 @@ export default async function MissionLabPage({
       records={records}
       isAiConfigured={isOpenAiConfigured()}
       initialHabitat={params.habitat?.toUpperCase()}
+      initialTab={params.tab}
       dataSource={dataSource}
     />
   );

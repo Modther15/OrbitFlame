@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { SkipLink } from "@/components/ui/skip-link";
 import { CosmicTransitionProvider } from "@/components/providers/cosmic-transition";
 
 const display = Outfit({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700", "800", "900"], variable: "--font-display", display: "swap" });
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${display.variable} ${mono.variable}`}>
       <body>
+        <SkipLink />
         <QueryProvider>
           <CosmicTransitionProvider>{children}</CosmicTransitionProvider>
         </QueryProvider>

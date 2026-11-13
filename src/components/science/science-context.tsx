@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { PROXY_CAVEAT } from "@/lib/science/gravity";
 
 /** Short, source-attributed science callouts. Every statement is taken from the PSI investigation records (investigation_meta / *_investigation.json) or the project reference notes. */
 
@@ -10,7 +9,13 @@ const idLink = (id: string) => (
     {id}
   </Link>
 );
-const ids = (list: string[]) => list.flatMap((i, n) => (n ? [", ", idLink(i)] : [idLink(i)]));
+const ids = (list: string[]) =>
+  list.map((i, n) => (
+    <span key={i} className="whitespace-nowrap">
+      {idLink(i)}
+      {n < list.length - 1 ? <span className="text-[#6a84a9]">,</span> : null}
+    </span>
+  ));
 
 const HARDWARE: { title: string; hw: string; psi: string[]; note: string }[] = [
   { title: "CIR + ACME", hw: "Combustion Integrated Rack with the ACME gaseous-flame experiment", psi: ["PSI-10", "PSI-20", "PSI-21", "PSI-22", "PSI-159"], note: "Gaseous fuels: spherical / coflow / burner flames (Flame Design, BRE, CLD, E-FIELD, CFI-G)." },
@@ -30,7 +35,7 @@ export function HardwareMap() {
             <p className="text-sm font-bold text-[#f4f8ff]">{h.title}</p>
             <p className="text-[11px] text-[#8ea5c7]">{h.hw}</p>
             <p className="mt-1.5 text-[11px] leading-4 text-[#c2d5ee]">{h.note}</p>
-            <p className="mt-2 flex flex-wrap gap-x-1">{ids(h.psi)}</p>
+            <p className="mt-2 flex flex-wrap gap-x-1.5">{ids(h.psi)}</p>
           </div>
         ))}
       </div>
@@ -55,7 +60,7 @@ export function Connections() {
           <div key={c.title} className="rounded-xl border border-white/10 bg-[#060e22]/70 p-3.5">
             <p className="text-sm font-bold text-[#f4f8ff]">{c.title}</p>
             <p className="mt-1 text-[11px] leading-4 text-[#c2d5ee]">{c.body}</p>
-            <p className="mt-2 flex flex-wrap gap-x-1">{ids(c.psi)}</p>
+            <p className="mt-2 flex flex-wrap gap-x-1.5">{ids(c.psi)}</p>
           </div>
         ))}
       </div>
@@ -76,43 +81,42 @@ const RUNGS: { g: string; label: string; bin: string | null; actual: (i: NonNull
   { g: "1 g", label: "Ground / Earth", bin: "earth_eq", actual: (i) => i.nActual1g },
 ];
 
-/**
- * Gravity ladder: ACTUAL-gravity row counts (0 g flight vs 1 g ground-tagged) and, separately, effective-gravity PROXY row counts
- * (0 g rows with a unit-proven forced-flow speed mapped to a buoyancy-equivalent g; heuristic, not measured partial gravity).
- */
+/** Gravity ladder: how much real NASA test data sits at each gravity level (flight-measured vs estimated from airflow). */
 export function GravityLadder({ records }: { records: GravRec[] }) {
   const withInfo = records.filter((r) => r.gravityInfo);
+  const plural = (n: number, w: string) => `${n.toLocaleString("en-US")} ${w}${n === 1 ? "" : "s"}`;
   return (
     <Card data-testid="gravity-ladder" className="border border-white/10 bg-[#09152e]/80 p-5 backdrop-blur-md">
-      <p className={`${kicker} text-[#52b6ff]`}>Gravity ladder: actual gravity vs effective-gravity proxy</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <h3 className="text-base font-bold text-[#f4f8ff]">Gravity Coverage Ladder</h3>
+      <p className="mt-0.5 text-xs text-[#8ea5c7]">Real NASA test runs available at each gravity level, from microgravity to Earth.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {RUNGS.map((r) => {
           const actualRows = withInfo.reduce((n, x) => n + r.actual(x.gravityInfo!), 0);
           const actualInv = withInfo.filter((x) => r.actual(x.gravityInfo!) > 0).map((x) => x.id);
           const proxy = r.bin ? withInfo.filter((x) => (x.gravityInfo!.proxyBins[r.bin!] ?? 0) > 0) : [];
           const proxyRows = proxy.reduce((n, x) => n + (x.gravityInfo!.proxyBins[r.bin!] ?? 0), 0);
           return (
-            <div key={r.g} className={`rounded-xl border p-3.5 ${actualRows || proxyRows ? "border-emerald-400/30 bg-emerald-400/[0.05]" : "border-white/10 bg-[#060e22]/70"}`}>
-              <p className="font-mono text-lg font-extrabold text-[#f4f8ff]">{r.g} <span className="text-[10px] font-semibold text-[#8ea5c7]">{r.label}</span></p>
-              <p className="mt-1.5 font-mono text-[10px] font-bold tracking-wider text-[#7bc5ff]">ACTUAL GRAVITY ROWS</p>
+            <div key={r.g} className={`rounded-xl border p-3.5 ${actualRows || proxyRows ? "border-[#36a9ff]/30 bg-[#36a9ff]/[0.05]" : "border-white/10 bg-[#060e22]/70"}`}>
+              <p className="text-lg font-extrabold text-[#f4f8ff]">{r.g} <span className="text-xs font-semibold text-[#8ea5c7]">{r.label}</span></p>
+              <p className="mt-1.5 text-[11px] font-semibold text-[#7bc5ff]">Measured in flight or on the ground</p>
               {actualRows ? (
                 <>
-                  <p className="text-[11px] text-emerald-300">{actualRows.toLocaleString("en-US")} rows in {actualInv.length} investigations{r.g === "0 g" ? " (ISS/Cygnus flight)" : " (ground-tagged)"}</p>
-                  <p className="flex flex-wrap gap-x-1">{ids(actualInv)}</p>
+                  <p className="text-[12px] text-[#e6effc]">{plural(actualRows, "test run")} across {plural(actualInv.length, "investigation")}{r.g === "0 g" ? " (ISS and Cygnus flights)" : " (ground-tagged)"}</p>
+                  <p className="mt-0.5 flex flex-wrap gap-x-1.5">{ids(actualInv)}</p>
                 </>
               ) : (
-                <p className="text-[11px] leading-4 text-[#9cb2d2]">0 rows. No PSI row is tagged at {r.g}{r.g === "1 g" ? "; NASA-STD-6001 1 g appears only as a reference bound in the BASS records" : ""}.</p>
+                <p className="text-[12px] leading-4 text-[#9cb2d2]">No test runs recorded at {r.g}{r.g === "1 g" ? "; the 1 g level appears only as a reference limit in the BASS records" : ""}.</p>
               )}
               {r.bin && (
                 <>
-                  <p className="mt-2 font-mono text-[10px] font-bold tracking-wider text-amber-300">EFFECTIVE-GRAVITY PROXY (HEURISTIC)</p>
+                  <p className="mt-2 text-[11px] font-semibold text-[#ffb067]">Estimated from airflow</p>
                   {proxyRows ? (
                     <>
-                      <p className="text-[11px] text-amber-200">{proxyRows.toLocaleString("en-US")} 0 g rows with ~{r.g} flow-equivalent from {proxy.length} investigations</p>
-                      <p className="flex flex-wrap gap-x-1">{ids(proxy.map((x) => x.id))}</p>
+                      <p className="text-[12px] text-[#e6effc]">{plural(proxyRows, "microgravity run")} with airflow comparable to ~{r.g} buoyancy, across {plural(proxy.length, "investigation")}</p>
+                      <p className="mt-0.5 flex flex-wrap gap-x-1.5">{ids(proxy.map((x) => x.id))}</p>
                     </>
                   ) : (
-                    <p className="text-[11px] leading-4 text-[#9cb2d2]">0 rows map to ~{r.g} equivalent.</p>
+                    <p className="text-[12px] leading-4 text-[#9cb2d2]">No runs have airflow comparable to ~{r.g}.</p>
                   )}
                 </>
               )}
@@ -120,9 +124,6 @@ export function GravityLadder({ records }: { records: GravRec[] }) {
           );
         })}
       </div>
-      <p className="mt-2.5 font-mono text-[10px] leading-4 text-[#6f88ad]">
-        Actual g = 0 is the ISS / Cygnus flight baseline (gravity_inferred = true; never a tabulated PSI column). {PROXY_CAVEAT} Proxy rows are not measured Lunar / Mars / Earth data and are never counted as actual-gravity evidence.
-      </p>
     </Card>
   );
 }
@@ -144,7 +145,7 @@ export function EarthApplications() {
             <p className="mt-1 text-[11px] leading-4 text-[#c2d5ee]"><span className="text-[#ffb067]">Relevant to: </span>{i.rel}</p>
             <p className="mt-1 text-[11px] leading-4 text-[#9cb2d2]">{i.src}</p>
             <p className="mt-1 text-[11px] leading-4 text-amber-300">{i.gap}</p>
-            <p className="mt-2 flex flex-wrap gap-x-1">{ids(i.psi)}</p>
+            <p className="mt-2 flex flex-wrap gap-x-1.5">{ids(i.psi)}</p>
           </div>
         ))}
       </div>

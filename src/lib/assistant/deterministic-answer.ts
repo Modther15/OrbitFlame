@@ -50,7 +50,7 @@ export function hintResponse(reason: string): AssistantApiResponse {
     sufficiency: "SUFFICIENT_VERIFIED",
     provenanceBanner: banner(),
     answer:
-      "I answer questions about the NASA PSI microgravity-combustion investigations indexed here. Ask about a specific investigation, e.g. 'PSI-159', 'BASS', 'FLEX' or 'SAME-R', or about a habitat (Moon, Mars, ISS, EVA suit, Earth).\nExample questions:\n- " +
+      "## What I can answer\n\nI answer questions about the NASA PSI microgravity-combustion investigations indexed here.\n\n- Ask about a specific investigation, e.g. PSI-159, BASS, FLEX or SAME-R.\n- Ask about a habitat (Moon, Mars, ISS, EVA suit, Earth).\n\n## Example questions\n\n- " +
       EXAMPLE_QUESTIONS.join("\n- "),
     claims: [],
     citations: [],
@@ -161,30 +161,40 @@ async function localBuilder(question: string, history: AssistantTurnInput[], ids
   const lines: string[] = [];
   const citations: AssistantCitation[] = [];
   const claims: AssistantApiResponse["claims"] = [];
+  lines.push("## Bottom line", "");
+  recs.forEach((rec, i) => {
+    lines.push(`**${rec.id} · ${rec.acronym ?? rec.name}** — ${rec.name}: ${rec.testRuns.length ? `**${rec.testRuns.length} test rows** [${i + 1}]` : "metadata and protocol only (no test rows)"}.`, "");
+  });
   recs.forEach((rec, i) => {
     const run = rec.testRuns[0];
     const n = i + 1;
     const gi = rec.gravityInfo;
-    lines.push(`${rec.id} (${rec.acronym ?? rec.name}): ${rec.name}.`);
-    lines.push(`  Hardware (PSI record): ${rec.hardware ?? "none listed"}; flight program: ${rec.flightProgram ?? "n/a"}.`);
-    if (rec.objective) lines.push(`  Objective (PSI record): ${cleanTruncate(rec.objective, 400)}`);
-    lines.push(`  Test rows: ${rec.testRuns.length}${run ? ` [${n}]` : " (metadata and protocol only in PSI)"}. Fuels: ${rec.fuelMaterial}.`);
+    lines.push(`## ${rec.id} · ${rec.acronym ?? rec.name}`, "");
+    lines.push(`- **Hardware:** ${rec.hardware ?? "none listed"}; flight program: ${rec.flightProgram ?? "n/a"}.`);
+    if (rec.objective) lines.push(`- **Objective (from the PSI record):** ${cleanTruncate(rec.objective, 400)}`);
+    lines.push(`- **Test rows:** ${rec.testRuns.length}${run ? ` [${n}]` : " (metadata and protocol only in PSI)"}.`);
+    lines.push(`- **Fuels / materials:** ${rec.fuelMaterial}.`);
     const rg = rec.ranges;
-    lines.push(`  Conditions with values: ${[rg?.o2, rg?.pressure, rg?.airflow].filter(Boolean).join("; ") || "none unit-proven (see variable panel)"}.`);
+    const conds = [["Oxygen", rg?.o2], ["Pressure", rg?.pressure], ["Airflow", rg?.airflow]].filter(([, v]) => v);
+    if (conds.length) { lines.push("- **Conditions recorded in the tables:**"); for (const [k, v] of conds) lines.push(`  - ${k}: ${v}`); }
+    else lines.push("- **Conditions recorded:** none unit-proven (see the variable panel).");
     const v = vars?.data.by_psi?.[rec.id];
     if (v) {
       const names = (rows: Array<{ header: string | null; column_name: string }>) => [...new Set(rows.map((r) => (r.header ?? r.column_name).trim()))];
       for (const [role, label] of [["controlled", "Held constant"], ["varied", "Varied"], ["measured", "Measured outputs"]] as const) {
         const nm = names(v[role] ?? []);
-        if (nm.length) lines.push(`  ${label} (${nm.length}): ${nm.slice(0, 8).join(", ")}${nm.length > 8 ? " ..." : ""}.`);
+        if (nm.length) lines.push(`- **${label} (${nm.length}):** ${nm.slice(0, 8).join(", ")}${nm.length > 8 ? " ..." : ""}.`);
       }
       const nd = names(v.diagnostic_imaging ?? []).length;
-      if (nd) lines.push(`  Diagnostics / imaging columns (${nd}) are not experimental variables.`);
+      if (nd) lines.push(`- **Not experimental variables:** ${nd} diagnostic columns.`);
     }
-    if (gi) lines.push(`  Actual gravity: ${gi.actualG === null ? "not reported" : `${gi.actualG.toFixed(1)} g`} (${gi.source ?? "n/a"}; inferred). Effective-gravity PROXY rows: ${gi.nProxyRows} of ${rec.testRuns.length}.`);
-    for (const c of audit?.candidates ?? []) {
-      if (c.psi_ids.includes(rec.id)) lines.push(`  ${c.passed_gate ? "MODEL (passes dummy-baseline gate)" : "LOOKUP ONLY (fails gate)"}: ${c.id} (${c.target}; n=${c.n_samples}).`);
+    if (gi) lines.push(`- **Gravity:** ${gi.actualG === null ? "not reported" : `${gi.actualG.toFixed(1)} g`} (${gi.source ?? "n/a"}; inferred).`);
+    const mods = (audit?.candidates ?? []).filter((c) => c.psi_ids.includes(rec.id));
+    if (mods.length) {
+      lines.push("- **Surrogate models trained on these rows:**");
+      for (const c of mods) lines.push(`  - ${c.passed_gate ? "Passes the naive-baseline check" : "Lookup only (fails the naive-baseline check)"}: ${c.id.replace(/_/g, " ")} (${c.target.replace(/_/g, " ")}; ${c.n_samples} samples).`);
     }
+    lines.push("");
     if (run) {
       citations.push({
         citationNumber: n, evidenceId: `${rec.id}:${run.id}`.slice(0, 120), investigationId: rec.id, investigationTitle: rec.name, family: rec.family, testRunId: run.id,
@@ -197,9 +207,9 @@ async function localBuilder(question: string, history: AssistantTurnInput[], ids
   });
   if (/\b(moon|lunar|artemis)\b/i.test(question) || /\b(apply|applies|relevan|habitat)\b/i.test(question)) {
     const by = ranks?.habitats?.moon?.by_investigation ?? [];
-    lines.push("Habitat view (Artemis Moon Base: 0.16 g, <= 10.2 psi / 70.3 kPa, >= 30% O2):");
-    if (by.length) lines.push(`  physics_ranker top 3: ${by.slice(0, 3).map((b) => `${b.psi_id} (${b.max_score.toFixed(1)})`).join(", ")}.`);
-    lines.push(`  Caveat: every PSI row is ISS/Cygnus flight data at actual gravity 0.0 g, so none is a measured 0.16 g test. ${PROXY_CAVEAT}`);
+    lines.push("## How this applies to the Artemis Moon Base", "", "- **Habitat reference:** 0.16 g, up to 10.2 psi / 70.3 kPa, at least 30% O2.");
+    if (by.length) lines.push(`- **Best-matching PSI investigations overall:** ${by.slice(0, 3).map((b) => `**${b.psi_id}** (${b.max_score.toFixed(1)})`).join(", ")} (score 0 to 100).`);
+    lines.push("", "## Caveats", "", "- Every PSI row is ISS/Cygnus flight data at 0.0 g, so none is a measured 0.16 g test.", `- ${PROXY_CAVEAT}`);
   }
   return {
     requestId: crypto.randomUUID(), mode: "deterministic_fallback", dataMode: "VERIFIED_INDEXED_DATA", fallbackReason: `${reason} (local snapshot builder; FastAPI unreachable)`,

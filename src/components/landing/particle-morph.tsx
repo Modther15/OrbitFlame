@@ -396,22 +396,57 @@ type ParticleMorphProps = {
   label: string;
 };
 
-/** Particle morph stage. Renders only while on screen; honours reduced-motion. */
+let softwareRendererCache: boolean | null = null;
+/** True when WebGL is backed by a CPU rasteriser (SwiftShader / llvmpipe / "Software"), i.e. the machine has no usable GPU. */
+export function isSoftwareRenderer(): boolean {
+  if (softwareRendererCache !== null) return softwareRendererCache;
+  if (typeof document === "undefined") return false;
+  let soft = false;
+  try {
+    const c = document.createElement("canvas");
+    const gl = (c.getContext("webgl") || c.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+    if (!gl) soft = true;
+    else {
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      soft = /swiftshader|llvmpipe|software|softpipe|basic render/i.test(name);
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+    }
+  } catch {
+    soft = true;
+  }
+  softwareRendererCache = soft;
+  if (soft) document.documentElement.setAttribute("data-lite", "1"); // lets CSS drop decorative effects too
+  return soft;
+}
+
+/** Drives rendering at a fixed low frame rate (the loop is "demand"; we invalidate on a timer). */
+function FrameLimiter({ fps }: { fps: number }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    invalidate();
+    const id = window.setInterval(invalidate, 1000 / fps);
+    return () => window.clearInterval(id);
+  }, [fps, invalidate]);
+  return null;
+}
+
+/** Particle morph stage. Mounts its WebGL canvas only near the viewport (one live context at a time in practice), throttled, and lighter on software renderers. */
 export function ParticleMorph({ shapes, active = 0, count = 5200, pointSize = 9, autoRotate = true, rotationY = null, dark = false, cameraZ = 4.6, className, label }: ParticleMorphProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  const [near, setNear] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
-  const [webgl, setWebgl] = useState(true);
+  const [soft, setSoft] = useState(false);
   const reduced = useReducedMotion();
+
+  useEffect(() => {
+    setSoft(isSoftwareRenderer());
+  }, []);
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => {
-      setVisible(entry.isIntersecting);
-      if (entry.isIntersecting) setHasBeenVisible(true);
-    }, { rootMargin: "120px" });
+    const io = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), { rootMargin: "200px" });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -423,22 +458,24 @@ export function ParticleMorph({ shapes, active = 0, count = 5200, pointSize = 9,
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
-  const n = typeof window !== "undefined" && window.innerWidth < 768 ? Math.round(count * 0.45) : count;
+  const mobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const factor = soft ? 0.25 : mobile ? 0.4 : 0.55;
+  const n = Math.max(600, Math.round(count * factor));
+  const fps = soft ? 15 : 30;
 
   return (
     <div ref={wrapRef} className={className} role="img" aria-label={label}>
-      {webgl && hasBeenVisible ? (
+      {near && pageVisible ? (
         <Canvas
-          dpr={[1, 1.75]}
-          frameloop={visible && pageVisible ? (reduced ? "demand" : "always") : "never"}
+          dpr={1}
+          frameloop="demand"
           camera={{ position: [0, 0, cameraZ], fov: 40 }}
-          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-          onCreated={({ gl }) => gl.domElement.addEventListener("webglcontextlost", () => setWebgl(false), { once: true })}
+          gl={{ antialias: false, alpha: true, powerPreference: soft ? "low-power" : "high-performance" }}
+          onCreated={({ gl }) => gl.domElement.addEventListener("webglcontextlost", (e) => e.preventDefault())}
         >
-          <Field shapes={shapes} active={active} count={n} pointSize={pointSize} animate={!reduced} autoRotate={autoRotate} rotationY={rotationY} dark={dark} />
+          <Field shapes={shapes} active={active} count={n} pointSize={pointSize * (soft ? 1.0 : 1.25)} animate={!reduced} autoRotate={autoRotate} rotationY={rotationY} dark={dark} />
+          {reduced ? null : <FrameLimiter fps={fps} />}
         </Canvas>
-      ) : !webgl ? (
-        <div className="lp-fallback">Conceptual particle visual unavailable on this device.</div>
       ) : null}
     </div>
   );

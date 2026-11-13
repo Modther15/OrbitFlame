@@ -7,7 +7,6 @@ import { Hero } from "@/components/landing/hero";
 import { LandingNav, RevealController } from "@/components/landing/landing-chrome";
 import { MissionContexts } from "@/components/landing/mission-contexts";
 import { investigationRepository } from "@/lib/data/repository";
-import { BENCHMARK_LABEL } from "@/lib/api/backend-types";
 import { DEMO_WARNING } from "@/lib/demo/dataset";
 import "./landing.css";
 
@@ -38,7 +37,7 @@ export default async function HomePage() {
   const investigations = await investigationRepository.list();
   const families: FamilyCard[] = FAMILY_META.map((f) => ({ ...f, records: investigations.filter((r) => r.family === f.key).length }));
   const isBenchmark = investigationRepository.mode === "backend" && investigations.some((r) => r.provenanceStatus === "NASA_VERIFIED_DATA");
-  const bannerLabel = isBenchmark ? BENCHMARK_LABEL : DEMO_WARNING;
+  const bannerLabel = DEMO_WARNING;
   const testPoints = investigations.reduce((n, r) => n + r.testRuns.length, 0);
   const verified = isBenchmark ? testPoints : 0; // rows parsed unmodified from NASA PSI files
   const documents = isBenchmark ? new Set(investigations.flatMap((r) => r.testRuns.map((t) => (t.sourceRunKey ?? "").split(" · ")[0]).filter(Boolean))).size : 0; // distinct PSI data files that contribute rows
@@ -55,7 +54,7 @@ export default async function HomePage() {
           <div><b>{String(families.length).padStart(2, "0")}</b><span className="lp-mono">Program families</span></div>
           <div><b>{String(documents).padStart(2, "0")}</b><span className="lp-mono">Source documents</span></div>
           <div><b>{String(verified).padStart(2, "0")}</b><span className="lp-mono">Verified evidence spans</span></div>
-          <p className="lp-mono">{isBenchmark ? `${testPoints.toLocaleString("en-US")} real test rows · ${BENCHMARK_LABEL}` : DEMO_WARNING}</p>
+          <p className="lp-mono">{isBenchmark ? `${testPoints.toLocaleString("en-US")} real NASA test rows` : DEMO_WARNING}</p>
         </section>
 
         <section id="programs" className="lp-section">
@@ -111,7 +110,9 @@ export default async function HomePage() {
       <footer className="lp-footer">
         <span className="lp-logo"><span className="lp-logo-mark" aria-hidden="true" /><span>Orbit<b>Flame</b></span></span>
         <span className="lp-mono">NASA Space Apps 2026 · Flame in Freefall · Cairo</span>
-        <span className="lp-mono">{bannerLabel}</span>
+        {!isBenchmark && <span className="lp-mono">{bannerLabel}</span>}
+        <Link href="/mission-lab" className="lp-mono">Mission Lab ↗</Link>
+        <Link href="/assistant" className="lp-mono">AI Assistant ↗</Link>
         <Link href="/explore" className="lp-mono">Explorer ↗</Link>
       </footer>
     </div>

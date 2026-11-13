@@ -46,7 +46,12 @@
   }
 
   button:focus-visible,
-  a:focus-visible {
+  a:focus-visible,
+  summary:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  [role="tab"]:focus-visible {
     outline: 2px solid var(--flame-orange);
     outline-offset: 3px;
   }
@@ -65,8 +70,6 @@
   border: 1px solid rgba(54, 169, 255, 0.18);
   border-radius: var(--radius-panel);
   background: rgba(11, 23, 48, 0.78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 20px 50px -36px rgb(5 11 27 / 70%);
 }
 
@@ -84,22 +87,16 @@
 .cosmic-transit-overlay {
   opacity: 0;
   background: radial-gradient(circle at 50% 50%, rgba(54, 169, 255, 0.14) 0%, rgba(11, 23, 48, 0.42) 55%, rgba(4, 9, 22, 0.88) 100%);
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 260ms ease;
+  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 
 body.cosmic-warp-forward .cosmic-transit-overlay {
   opacity: 1;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 body.cosmic-warp-reverse .cosmic-transit-overlay {
   opacity: 1;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 /* Homepage Warp reaction on forward transition to Explore */

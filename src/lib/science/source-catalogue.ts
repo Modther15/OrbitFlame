@@ -36,13 +36,13 @@ export const NASA_SOURCE_PRIORITY_TIERS: readonly SourcePriorityTier[] = [
     rank: 1,
     name: "NASA Physical Sciences Informatics (PSI)",
     description: "Primary microgravity combustion investigation records, test matrices, and flight telemetry tables.",
-    labelingRule: "Eligible for NASA_VERIFIED_DATA once primary SourceLocator is verified.",
+    labelingRule: "Used as verified data once the source file is located.",
   },
   {
     rank: 2,
     name: "NASA Technical Reports Server (NTRS)",
     description: "Authoritative NASA technical memorandums, facility descriptions, and peer-reviewed contractor reports.",
-    labelingRule: "Must store document title, URL, page number, and table/section locator.",
+    labelingRule: "Cited with document title, URL, page and table.",
   },
   {
     rank: 3,

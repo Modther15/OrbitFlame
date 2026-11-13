@@ -52,19 +52,19 @@ const DOMAIN_DESCRIPTORS: Record<
     title: "Fire Prevention & Material Screening",
     focus: "Ignition, flame spread and extinction of solids (BASS, BASS-II, Saffire), gaseous flames (ACME: Flame Design, BRE, CLD, E-FIELD, CFI-G) and smoke-point behaviour (SPICE) in the indexed PSI tables.",
     caveat:
-      "Design relevance (e.g., liner or material selection) is interpretive only. The indexed prevention records establish no flight material qualification or safety rating.",
+      "These records inform material screening research; they are not a flight material qualification or safety rating.",
   },
   DETECTION: {
     title: "Smoke & Aerosol Detection",
     focus: "Smoke aerosol generation and aging (SAME, SAME-R) and aerosol-counter qualification against a dust standard (DAFT).",
     caveat:
-      "The ingested tables hold Rt/R0 and weight-loss-rate outcomes only; no detector-response or particle-size columns exist. Visual links indicate domain grouping only, not alarm certification.",
+      "The tables hold Rt/R0 and weight-loss-rate outcomes; links show domain grouping, not alarm certification.",
   },
   SUPPRESSION: {
     title: "Suppression & Atmospheric Dilution",
     focus: "Droplet-flame burning and extinction with O2, CO2, He and N dilution (FLEX, FLEX-2, CFI; liquid fuels in the CIR droplet apparatus).",
     caveat:
-      "Extinction diameters and burning rates are measured per test; no extinguishant-efficiency curve is derived here. Never infer extinguishant efficacy from metadata.",
+      "Extinction diameters and burning rates are measured per test; no extinguishant-efficiency curve is derived here. Extinguishant efficacy is not inferred from metadata.",
   },
 };
 
@@ -122,6 +122,6 @@ export function buildTechnologyMap(records: ScopeRecord[]): TechnologyMapReport 
     clusters,
     allNodes,
     nonCausalNotice:
-      "ASSOCIATION MAP ONLY — Connections below represent shared safety-domain and family metadata in the active index. They NEVER imply scientific causation, shared flammability physics, or spacecraft hardware qualification.",
+      "Links show shared safety domain and program family only; they do not imply causation or hardware qualification.",
   };
 }

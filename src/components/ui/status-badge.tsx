@@ -13,6 +13,7 @@ const labels: Record<Status, string> = {
 
 export function StatusBadge({ status }: { status: Status }) {
   const verified = status === "verified" || status === "direct" || status === "benchmark";
+  if (verified) return null; // verified provenance is the default; only exceptions are called out
   return (
     <span
       className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-3.5 py-1 font-mono text-[10px] font-semibold tracking-[.12em] ${

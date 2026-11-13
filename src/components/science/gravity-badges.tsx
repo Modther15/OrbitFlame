@@ -56,13 +56,7 @@ export function InvestigationGravityBadges({ info, totalRows, className = "" }: 
         <span title={effectiveGravityTitle("convective_velocity_equivalence")} className="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-amber-300">
           Effective gravity proxy: {info.nProxyRows}/{totalRows} rows ({bins}) · heuristic
         </span>
-      ) : (
-        totalRows > 0 && (
-          <span title={effectiveGravityTitle("direct")} className="inline-flex items-center rounded-full border border-white/20 bg-white/[0.05] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-[#c4d7f2]">
-            Effective gravity: direct (= actual)
-          </span>
-        )
-      )}
+      ) : null}
     </span>
   );
 }

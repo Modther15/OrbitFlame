@@ -5,12 +5,10 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Check,
-  CheckCircle2,
   Copy,
   FileJson,
   FileSpreadsheet,
   GitCompareArrows,
-  Info,
   Plus,
   ShieldAlert,
   Trash2,
@@ -24,7 +22,6 @@ import { ExploreSpaceBackground } from "@/components/explorer/explore-space-back
 import { ExperimentDesignMatrix } from "@/components/compare/design-matrix";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
 import type { DemoInvestigation } from "@/lib/api/schemas";
 import type { InvestigationSummary } from "@/lib/data/summary";
 import { loadVariableSummary } from "@/lib/api/backend-client";
@@ -35,7 +32,6 @@ import {
   buildCompareJsonExport,
   buildComparisonMatrix,
   buildComparisonSummary,
-  type ComparisonStatus,
 } from "@/lib/science/compare";
 import { setCompareIds, useCompareSelection } from "@/lib/state/compare-selection";
 
@@ -47,25 +43,6 @@ const CompareVisualizations = dynamic(
 type CompareViewProps = {
   records: InvestigationSummary[];
   initialIdsParam: string | null;
-};
-
-const STATUS_META: Record<ComparisonStatus, { label: string; badgeClass: string }> = {
-  EXACT_MATCH: {
-    label: "EXACT MATCH",
-    badgeClass: "border-cyan-400/35 bg-cyan-400/12 text-cyan-200",
-  },
-  DIFFERENT: {
-    label: "DIFFERENT",
-    badgeClass: "border-[#ff8a32]/40 bg-[#ff8a32]/15 text-[#ffb067]",
-  },
-  PARTIALLY_COMPARABLE: {
-    label: "PARTIALLY COMPARABLE",
-    badgeClass: "border-amber-300/35 bg-amber-400/12 text-amber-200",
-  },
-  UNKNOWN_NOT_REPORTED: {
-    label: "UNKNOWN / NOT REPORTED",
-    badgeClass: "border-white/20 bg-white/[0.06] text-[#9cb2d2]",
-  },
 };
 
 function triggerDownload(filename: string, content: string, mimeType: string) {
@@ -190,11 +167,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
     [selectedRecords, matrixRows, fullReady],
   );
 
-  const allVerified =
-    selectedRecords.length > 0 &&
-    selectedRecords.every((r) => r.provenanceStatus === "NASA_VERIFIED_DATA" && r.source?.verificationStatus === "VERIFIED");
   const hasDemoFixtures = selectedRecords.some((r) => r.provenanceStatus === "DEMO_FIXTURE");
-  const badgeStatus = allVerified || (selectedRecords.length === 0 && records.some((r) => r.provenanceStatus === "NASA_VERIFIED_DATA")) ? "verified" : hasDemoFixtures ? "demo" : "unverified";
 
   function applySelection(nextIds: string[]) {
     const clean = replaceIds(nextIds);
@@ -257,7 +230,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
             </Link>
             <div className="mt-4">
               <span className="inline-block rounded-full border border-[#36a9ff]/25 bg-[linear-gradient(90deg,rgba(54,169,255,0.12),rgba(255,138,50,0.1))] px-3 py-1 font-mono text-[10px] font-semibold tracking-[.2em] text-[#52b6ff]">
-                [ 02 // COMPARE LAB ]
+                CROSS-INVESTIGATION EXPERIMENT COMPARISON LAB
               </span>
             </div>
             <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-[#f4f8ff] sm:text-4xl">
@@ -267,7 +240,6 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
               </span>
             </h1>
           </div>
-          <StatusBadge status={badgeStatus} />
         </header>
 
         {(parsedUrl.invalidTokens.length > 0 || parsedUrl.overflowCount > 0) && (
@@ -307,7 +279,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
             <div className="flex items-center gap-2.5">
               <GitCompareArrows size={17} className="text-[#ff8a32]" aria-hidden="true" />
               <span className="font-mono text-xs font-semibold tracking-[.16em] text-[#ffb067] uppercase">
-                {`SELECTED RECORDS // ${selectedRecords.length} OF ${maxItems}`}
+                {`Selected investigations · ${selectedRecords.length} of ${maxItems}`}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -349,7 +321,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {selectedRecords.map((rec) => (
               <div
                 key={rec.id}
@@ -358,7 +330,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[11px] font-bold tracking-[.14em] text-[#ff8a32]">
-                      {`${rec.id} // ${rec.family ?? "UNCLASSIFIED"}`}
+                      {`${rec.id} · ${rec.family ?? "Unclassified"}`}
                     </span>
                     <button
                       type="button"
@@ -375,9 +347,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
                   </p>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5">
-                  <span className="font-mono text-[10px] text-amber-300">
-                    {rec.provenanceStatus === "DEMO_FIXTURE" ? "DEMO FIXTURE" : rec.provenanceStatus === "NASA_VERIFIED_DATA" ? (rec.rowStatus === "metadata_only" ? "METADATA & PROTOCOL ONLY IN PSI" : "VERIFIED NASA PSI EXPERIMENTAL DATA") : rec.provenanceStatus}
-                  </span>
+                  {rec.provenanceStatus === "DEMO_FIXTURE" ? <span className="font-mono text-[10px] text-amber-300">DEMO FIXTURE</span> : rec.rowStatus === "metadata_only" ? <span className="text-[10px] text-[#8ea5c7]">Metadata Only</span> : <span />}
                   <Link
                     href={`/investigations/${rec.id}`}
                     className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold tracking-wider text-[#52b6ff] uppercase hover:text-[#ff8a32]"
@@ -495,226 +465,7 @@ export function CompareView({ records, initialIdsParam }: CompareViewProps) {
             )}
 
             <ExperimentDesignMatrix records={selectedRecords} vars={varSummary} loading={varLoading} />
-
             <CompareVisualizations records={selectedRecords} matrixRows={matrixRows} />
-
-            {/* Desktop Matrix Table (xl and up) */}
-            <Card className="mt-6 hidden overflow-hidden border border-white/10 bg-[#09152e]/85 p-0 backdrop-blur-md xl:block">
-              <div className="border-b border-white/10 px-6 py-4">
-                <span className="font-mono text-[10px] font-semibold tracking-[.16em] text-[#52b6ff] uppercase">
-                  COMPATIBLE-DIMENSION MATRIX
-                </span>
-                <h2 className="mt-1 text-lg font-extrabold tracking-tight text-[#f4f8ff]">Side-by-Side Comparison Matrix</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-[#060e22]/85 font-mono text-[10px] tracking-[.14em] text-[#8ea5c7] uppercase">
-                      <th className="w-[180px] px-5 py-3.5 font-semibold">Dimension</th>
-                      <th className="w-[175px] px-4 py-3.5 font-semibold">Relationship</th>
-                      {selectedRecords.map((rec) => (
-                        <th key={rec.id} className="min-w-[180px] px-5 py-3.5 font-semibold text-[#f4f8ff]">
-                          <span className="text-[#ff8a32]">{rec.id}</span> · {rec.family ?? "Other"}
-                          <span className="mt-0.5 block font-sans text-xs font-semibold normal-case tracking-normal text-[#c2d5ee]">
-                            {rec.name}
-                          </span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {matrixRows.map((row) => {
-                      const meta = STATUS_META[row.status];
-                      return (
-                        <tr key={row.key} className="align-top transition-colors hover:bg-white/[0.02]">
-                          <td className="px-5 py-4">
-                            <p className="font-semibold text-[#f4f8ff]">{row.label}</p>
-                            <p className="mt-1 text-[11px] leading-4 text-[#7d95b8]">{row.note}</p>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span
-                              className={`inline-block rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wider ${meta.badgeClass}`}
-                            >
-                              {meta.label}
-                            </span>
-                          </td>
-                          {row.cells.map((cell) => (
-                            <td key={`${row.key}-${cell.recordId}`} className="px-5 py-4">
-                              <p
-                                className={`text-sm font-semibold ${
-                                  cell.missingStatus === "NOT_REPORTED"
-                                    ? "font-mono text-xs text-amber-300"
-                                    : cell.rawNumericValue !== null
-                                      ? "font-mono text-[#f4f8ff]"
-                                      : "text-[#e6effc]"
-                                }`}
-                              >
-                                {cell.displayValue}
-                                {cell.unit ? ` ${cell.unit}` : ""}
-                              </p>
-                              {cell.siDisplay && (
-                                <p className="mt-1 font-mono text-[11px] text-[#8ea5c7]">SI: {cell.siDisplay}</p>
-                              )}
-                              <div className="mt-2">
-                                {cell.isVerified ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/35 bg-emerald-400/15 px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-emerald-300">
-                                    <CheckCircle2 size={10} /> VERIFIED
-                                  </span>
-                                ) : cell.isDemoFixture ? (
-                                  <span className="inline-block rounded-full border border-sky-400/25 bg-sky-400/10 px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-sky-300">
-                                    DEMO ONLY
-                                  </span>
-                                ) : (
-                                  <span className="inline-block rounded-full border border-white/15 bg-white/[0.05] px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-[#9cb2d2]">
-                                    {cell.provenanceLabel}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-
-            {/* Tablet / Mobile Responsive Comparison Cards (< xl) */}
-            <div className="mt-6 space-y-4 xl:hidden">
-              {matrixRows.map((row) => {
-                const meta = STATUS_META[row.status];
-                return (
-                  <Card key={row.key} className="border border-white/10 bg-[#09152e]/85 p-4 backdrop-blur-md">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
-                      <h3 className="text-sm font-bold text-[#f4f8ff]">{row.label}</h3>
-                      <span
-                        className={`inline-block rounded-full border px-2.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-wider ${meta.badgeClass}`}
-                      >
-                        {meta.label}
-                      </span>
-                    </div>
-                    <p className="mt-2.5 text-xs leading-5 text-[#8ea5c7]">{row.note}</p>
-                    <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                      {row.cells.map((cell) => (
-                        <div
-                          key={`${row.key}-m-${cell.recordId}`}
-                          className="rounded-xl border border-white/10 bg-[#060e22]/80 p-3"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[11px] font-bold text-[#ff8a32]">{cell.recordId}</span>
-                            {cell.isVerified ? (
-                              <span className="font-mono text-[9px] font-semibold text-emerald-300">VERIFIED</span>
-                            ) : cell.isDemoFixture ? (
-                              <span className="font-mono text-[9px] font-semibold text-sky-300">DEMO ONLY</span>
-                            ) : (
-                              <span className="font-mono text-[9px] font-semibold text-[#9cb2d2]">{cell.provenanceLabel}</span>
-                            )}
-                          </div>
-                          <p
-                            className={`mt-1 text-xs font-semibold ${
-                              cell.missingStatus === "NOT_REPORTED" ? "font-mono text-amber-300" : "text-[#f4f8ff]"
-                            }`}
-                          >
-                            {cell.displayValue}
-                            {cell.unit ? ` ${cell.unit}` : ""}
-                          </p>
-                          {cell.siDisplay && <p className="mt-0.5 font-mono text-[10px] text-[#8ea5c7]">SI: {cell.siDisplay}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {/* Evidence-Based Deterministic Comparison Summary */}
-            <Card className="mt-6 border border-white/10 bg-[#09152e]/85 p-6 backdrop-blur-md">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-4">
-                <div>
-                  <span className="font-mono text-[10px] font-semibold tracking-[.16em] text-[#ff8a32] uppercase">
-                    RULE-BASED DETERMINISTIC SYNTHESIS
-                  </span>
-                  <h2 className="mt-1 text-lg font-extrabold tracking-tight text-[#f4f8ff]">
-                    Evidence-Based Comparison Summary
-                  </h2>
-                </div>
-                <span className="rounded-full border border-white/15 bg-white/[0.05] px-3 py-1 font-mono text-[10px] tracking-wider text-[#9eb7e0] uppercase">
-                  NO LLM INFERENCE
-                </span>
-              </div>
-
-              <div className="mt-5 grid gap-5 lg:grid-cols-2">
-                <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
-                  <h3 className="font-mono text-xs font-bold tracking-wider text-cyan-300 uppercase">
-                    Genuinely Shared Dimensions ({summary.shared.length})
-                  </h3>
-                  {summary.shared.length > 0 ? (
-                    <ul className="mt-2.5 list-disc space-y-1.5 pl-4 text-xs leading-5 text-[#d8e6fa]">
-                      {summary.shared.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-xs text-[#8ea5c7]">No non-missing dimensions are an exact match across all selected records.</p>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-[#ff8a32]/25 bg-[#ff8a32]/[0.05] p-4">
-                  <h3 className="font-mono text-xs font-bold tracking-wider text-[#ffb067] uppercase">
-                    Documented Differences ({summary.differences.length})
-                  </h3>
-                  {summary.differences.length > 0 ? (
-                    <ul className="mt-2.5 list-disc space-y-1.5 pl-4 text-xs leading-5 text-[#e6effc]">
-                      {summary.differences.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-xs text-[#8ea5c7]">No directly comparable fields showed differing reported values.</p>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] p-4">
-                  <h3 className="font-mono text-xs font-bold tracking-wider text-amber-300 uppercase">
-                    Cannot Compare Directly ({summary.cannotCompare.length})
-                  </h3>
-                  {summary.cannotCompare.length > 0 ? (
-                    <ul className="mt-2.5 list-disc space-y-1.5 pl-4 text-xs leading-5 text-amber-100/90">
-                      {summary.cannotCompare.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-xs text-[#8ea5c7]">All evaluated dimensions had directly comparable inputs.</p>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-white/15 bg-white/[0.03] p-4">
-                  <h3 className="font-mono text-xs font-bold tracking-wider text-[#9cb2d2] uppercase">
-                    Missing Evidence &amp; Gaps ({summary.missingEvidence.length})
-                  </h3>
-                  {summary.missingEvidence.length > 0 ? (
-                    <ul className="mt-2.5 list-disc space-y-1.5 pl-4 text-xs leading-5 text-[#c2d5ee]">
-                      {summary.missingEvidence.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-xs text-[#8ea5c7]">No unreported dimensions detected among evaluated rows.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-white/10 bg-[#060e22]/80 p-4 text-xs leading-5 text-[#9eb7e0]">
-                <Info size={15} className="mt-0.5 shrink-0 text-[#36a9ff]" aria-hidden="true" />
-                <ul className="space-y-1">
-                  {summary.provenanceNotes.map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ul>
-              </div>
-            </Card>
           </>
         )}
       </main>

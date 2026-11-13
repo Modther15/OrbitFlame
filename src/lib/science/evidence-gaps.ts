@@ -170,15 +170,15 @@ function generateProposedQuestions(
 
   if (included.length === 0) {
     questions.push(
-      `Proposal: In the currently indexed OrbitFlame dataset (${datasetScope.totalRecords} records), 0 records directly document ${gravityAxis.shortLabel.toLocaleLowerCase()} ${domainLower} testing. Are primary PSI/NTRS reports available externally for ${gravityAxis.missionContextLabel.toLocaleLowerCase()} conditions?`,
+      `None of the ${datasetScope.totalRecords} indexed investigations directly tests ${domainLower} at ${gravityAxis.shortLabel.toLocaleLowerCase()}. Do NASA reports outside PSI cover ${gravityAxis.missionContextLabel.toLocaleLowerCase()} conditions?`,
     );
     if ((gravityAxis.id === "LUNAR_GRAVITY" || gravityAxis.id === "MARS_GRAVITY") && adjacentPartial.length > 0) {
       questions.push(
-        `Proposal: How do unspecified partial-gravity surrogate records (${adjacentPartial.map((r) => r.id).join(", ")}) compare against dedicated ${gravityAxis.label} ${domainLower} measurements once curated?`,
+        `How do unspecified partial-gravity surrogate records (${adjacentPartial.map((r) => r.id).join(", ")}) compare against dedicated ${gravityAxis.label} ${domainLower} measurements once curated?`,
       );
     }
     questions.push(
-      `Proposal: What minimum O₂ concentration, ambient pressure, and forced-ventilation bands would need to be documented before evaluating ${domainLower} hardware for ${gravityAxis.missionContextLabel.toLocaleLowerCase()}?`,
+      `What minimum O₂ concentration, ambient pressure, and forced-ventilation bands would need to be documented before evaluating ${domainLower} hardware for ${gravityAxis.missionContextLabel.toLocaleLowerCase()}?`,
     );
     return questions;
   }
@@ -190,7 +190,7 @@ function generateProposedQuestions(
 
   if (missingMeas.length > 0) {
     questions.push(
-      `Proposal: Which primary NASA tables or PSI datasets supply scalar/time-series outcome measurements (currently absent on ${missingMeas.join(", ")}) for ${gravityAxis.shortLabel.toLocaleLowerCase()} ${domainLower}?`,
+      `Which primary NASA tables or PSI datasets supply scalar/time-series outcome measurements (currently absent on ${missingMeas.join(", ")}) for ${gravityAxis.shortLabel.toLocaleLowerCase()} ${domainLower}?`,
     );
   }
   if (missingAir.length > 0 || missingP.length > 0 || missingO2.length > 0) {
@@ -202,12 +202,12 @@ function generateProposedQuestions(
       .filter(Boolean)
       .join("; ");
     questions.push(
-      `Proposal: Can omitted environmental boundary parameters — specifically ${missingDims} — be recovered from source experimental logs without interpolation?`,
+      `Can omitted environmental boundary parameters — specifically ${missingDims} — be recovered from source experimental logs without interpolation?`,
     );
   }
   if (included.every((r) => !r.isVerified)) {
     questions.push(
-      `Proposal: Replacing demo fixtures (${included.map((r) => r.id).join(", ")}) with source-verified NASA records carrying page/table locators would elevate traceability for ${gravityAxis.shortLabel.toLocaleLowerCase()} ${domainLower}.`,
+      `Replacing demo fixtures (${included.map((r) => r.id).join(", ")}) with source-verified NASA records carrying page/table locators would elevate traceability for ${gravityAxis.shortLabel.toLocaleLowerCase()} ${domainLower}.`,
     );
   }
 
@@ -266,16 +266,16 @@ export function buildEvidenceGapRadar(records: ScopeRecord[]): EvidenceGapRadarR
       const missingEvidenceReasons: string[] = [];
       if (includedRecords.length === 0) {
         missingEvidenceReasons.push(
-          `Zero indexed records exist in OrbitFlame for ${gravAxis.label} under the ${domainObj.label} domain.`,
+          `No indexed investigation covers ${domainObj.label} at ${gravAxis.label}.`,
         );
         missingEvidenceReasons.push(
-          "Indexed dataset gap ONLY — does not establish whether external NASA PSI/NTRS reports exist outside this index.",
+          "This is a gap in the PSI index only; other NASA reports may exist.",
         );
         if (adjacentPartialContextRecords.length > 0) {
           missingEvidenceReasons.push(
             `${adjacentPartialContextRecords.length} generic partial-gravity record(s) (${adjacentPartialContextRecords
               .map((r) => r.id)
-              .join(", ")}) exist in ${domainObj.label}, but unspecified partial gravity is NOT treated as direct ${gravAxis.shortLabel} data.`,
+              .join(", ")}) exist in ${domainObj.label}, but unspecified partial gravity is not counted as direct ${gravAxis.shortLabel} data.`,
           );
         }
       } else {

@@ -300,13 +300,13 @@ export function mapRowsToInvestigations(rows: PsiRow[], metas: InvestigationMeta
     };
     const findings = [
       list.length && list.every((r) => r.row_kind === "radiometer_test_summary") ? `${list.length} radiometer test-point summary rows (${list.map((r) => r.test_id).join(", ")}) parsed from ${files.join("; ")}; the workbook states no fuel, droplet, pressure or O2 values`
-        : list.length ? `${list.length.toLocaleString("en-US")} test rows from ${files.join("; ")}` : "No experimental table rows in the ingested PSI files (investigation metadata only)",
+        : list.length ? `${list.length.toLocaleString("en-US")} test runs recorded` : "No per-run test table in PSI (investigation record only)",
       fmtRange(o2Vals, "% O2"),
       fmtRange(pVals, "kPa", 1),
       fmtRange(fVals, "cm/s", 1),
       ignVals.length ? `hot ignition in ${ignVals.filter((v) => v >= 0.5).length} of ${ignVals.length} recorded tests` : null,
       kVals.length ? `droplet K ${Math.min(...kVals).toFixed(2)}–${Math.max(...kVals).toFixed(2)} mm²/s (n=${kVals.length})` : null,
-      gravityInfo.actualG === null ? null : `actual gravity ${gravityInfo.actualG.toFixed(1)} g (${gravityInfo.source?.startsWith("user_stated") ? "user-stated ISS/Cygnus baseline" : "ISS/Cygnus flight metadata"}; not tabulated in the PSI tables)${gravityInfo.nProxyRows ? `; ${gravityInfo.nProxyRows} rows also carry a flow-equivalent effective-gravity PROXY (heuristic)` : ""}`,
+      gravityInfo.actualG === null ? null : `${gravityInfo.actualG < 0.05 ? "microgravity (0 g, ISS / Cygnus flight)" : `${gravityInfo.actualG.toFixed(2)} g`}${gravityInfo.nProxyRows ? `; ${gravityInfo.nProxyRows} runs have airflow comparable to partial-gravity buoyancy` : ""}`,
     ].filter(Boolean).join("; ");
     const objective = (m?.objective || m?.approach || "").trim();
     const record = DemoInvestigationSchema.parse({
@@ -315,7 +315,7 @@ export function mapRowsToInvestigations(rows: PsiRow[], metas: InvestigationMeta
       acronym,
       family: tax.family,
       objective: objective ? cleanTruncate(objective, 1400) : null,
-      summary: `${acronym} (${psiId}${m?.experiment_hardware ? `, ${m.experiment_hardware}` : ""}${flight ? `, ${flight}` : ""}). ${list.length ? `${list.length.toLocaleString("en-US")} rows parsed unmodified from NASA PSI files` : "No parseable experimental rows in the downloaded PSI files"}; program text is from the PSI investigation record${m?.doi ? ` (DOI ${m.doi})` : ""}.`,
+      summary: `${acronym} (${psiId}${m?.experiment_hardware ? `, ${m.experiment_hardware}` : ""}${flight ? `, ${flight}` : ""}). ${list.length ? `${list.length.toLocaleString("en-US")} test runs from NASA PSI` : "Investigation record only; no per-run test table in PSI"}${m?.doi ? ` (DOI ${m.doi})` : ""}.`,
       safetyDomains: [tax.domain],
       gravityEnvironments: gravities.map(gravityLabel),
       provenanceStatus: "NASA_VERIFIED_DATA",

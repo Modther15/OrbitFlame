@@ -42,7 +42,7 @@ export function formatProvenanceTag(
   source: SourceLocator | null | undefined,
 ): string {
   if (provenanceStatus === "NASA_VERIFIED_DATA" && isSourceLocatorVerified(source)) {
-    return "VERIFIED NASA PSI EXPERIMENTAL DATA";
+    return "NASA PSI record";
   }
   if (provenanceStatus === "NASA_VERIFIED_DATA") {
     return "NASA RECORD — SOURCE UNVERIFIED";
@@ -304,7 +304,7 @@ export function deriveDatasetScope(records: ScopeRecord[]): DatasetScopeSummary 
 
   const activeDatasetBanner =
     scope === "VERIFIED_INDEXED_DATA"
-      ? "ACTIVE DATASET: VERIFIED NASA PSI EXPERIMENTAL DATA"
+      ? ""
       : scope === "MIXED"
         ? "ACTIVE DATASET: MIXED VERIFIED & DEMO RECORDS — CHECK PROVENANCE PER ITEM"
         : `ACTIVE DATASET: DEMO FIXTURES — FICTIONAL DATA — NOT NASA MEASUREMENTS`;

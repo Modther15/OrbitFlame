@@ -8,8 +8,6 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { Condition, Measurement, MissingStatus, ProvenanceStatus, SourceLocator, TestRun } from "@/lib/api/schemas";
 import { RUN_PAGE_SIZE, type RunStub, type RunStubCondition } from "@/lib/data/run-stubs";
 import { fetchRunDetail, fetchRunPage } from "@/lib/data/runs-client";
-import { GravityBadges } from "@/components/science/gravity-badges";
-import { gravityFromConds } from "@/lib/science/gravity";
 
 /** Conditions folded into the gravity badges instead of being listed as chips. */
 const HIDDEN_CHIP_KEYS = new Set(["gravity_value", "gravity", "effective_gravity", "effective_gravity_method", "gravity_source"]);
@@ -155,7 +153,6 @@ export function TestRunEvidenceSection({
   investigationId,
   investigationName,
   investigationSource,
-  fixtureLabel,
   totalRuns,
   initialRuns,
 }: TestRunEvidenceSectionProps) {
@@ -239,25 +236,17 @@ export function TestRunEvidenceSection({
       <Card className="mt-6 border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md">
         <div ref={sectionRef} className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-4">
           <div>
-            <span className="font-mono text-[10px] font-semibold tracking-[.16em] text-[#52b6ff] uppercase">
-              TEST RUN EVIDENCE // {totalRuns} {totalRuns === 1 ? "RUN" : "RUNS"}
-            </span>
-            <h2 className="mt-1 text-lg font-extrabold tracking-tight text-[#f4f8ff]">Test runs &amp; evidence inspection</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-[#f4f8ff]">Test Runs ({totalRuns.toLocaleString("en-US")})</h2>
             <p className="mt-1 text-xs text-[#8ea5c7]">
-              Inspect individual test-run conditions, missing-value states, measurements, and source locators. Full evidence is loaded when you open a run.
+              Conditions and measurements for each run. Open a run to see every value and its source row.
             </p>
           </div>
-          {fixtureLabel && (
-            <span className="rounded-full border border-emerald-400/35 bg-emerald-400/15 px-3 py-1 font-mono text-[10px] font-semibold tracking-wider text-emerald-300">
-              {totalRuns === 0 ? "METADATA & PROTOCOL ONLY IN PSI" : "VERIFIED NASA PSI EXPERIMENTAL DATA"}
-            </span>
-          )}
         </div>
 
         {totalRuns === 0 ? (
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-5 text-sm text-[#9cb2d2]">
-            <p className="font-mono text-[11px] font-bold tracking-wider text-amber-300">METADATA &amp; PROTOCOL ONLY IN PSI</p>
-            <p className="mt-1">The PSI files ingested for this investigation contain no per-test table, so no test rows are listed or scored. The objective, approach and hardware above come from the PSI investigation record; absence here does not imply that no experiments were run.</p>
+            <p className="font-semibold text-[#f4f8ff]">Metadata only</p>
+            <p className="mt-1">PSI publishes no per-test table for this investigation, so no runs are listed. The objective and hardware above come from its investigation record.</p>
           </div>
         ) : (
           <>
@@ -268,7 +257,7 @@ export function TestRunEvidenceSection({
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search run id, test, material, source row…"
+                  placeholder="Search by run, material or row…"
                   aria-label="Search test runs"
                 />
               </label>
@@ -299,11 +288,10 @@ export function TestRunEvidenceSection({
                     <li key={run.id} className="run-row">
                       <div className="min-w-0 flex-1">
                         <p className="run-id">
-                          {run.id} <span className="run-key">· {run.key ? `Source run: ${run.key}` : "Source run key: NOT REPORTED"}</span>
+                          {run.id} <span className="run-key">· {run.key ? run.key.replace(/^PSI-\d+_/, "").replace(/_/g, " ") : "Source row not reported"}</span>
                         </p>
                         <h3 className="run-title">{run.label}</h3>
                         {run.variant && <p className="run-variant">{run.variant}</p>}
-                        <p className="mt-2"><GravityBadges short parts={gravityFromConds(run.conds)} /></p>
                         <p className="mt-2 flex flex-wrap gap-1.5">
                           {run.conds.filter((c) => !HIDDEN_CHIP_KEYS.has(c.k)).map((c) => (
                             <span key={c.k} className={c.m === "PRESENT" ? "rc" : "rc rc-miss"}>
@@ -311,7 +299,7 @@ export function TestRunEvidenceSection({
                             </span>
                           ))}
                         </p>
-                        <p className="run-meta">{`${present} condition${present === 1 ? "" : "s"} present · ${missing} not reported · ${run.nMeas} recorded measurement${run.nMeas === 1 ? "" : "s"}`}</p>
+                        <p className="run-meta">{`${missing > 0 ? `${missing} condition${missing === 1 ? "" : "s"} not reported · ` : ""}${run.nMeas} measurement${run.nMeas === 1 ? "" : "s"}`}</p>
                       </div>
                       <button type="button" onClick={() => openRun(run)} aria-haspopup="dialog" className="run-inspect">
                         <FileSearch size={14} aria-hidden="true" /> Inspect run evidence
@@ -328,7 +316,7 @@ export function TestRunEvidenceSection({
       {selected && !detail && (
         <div className="fixed inset-0 z-50 flex justify-end bg-[#020612]/75 backdrop-blur-sm" role="presentation" onClick={(e) => e.target === e.currentTarget && closeRun()}>
           <section role="dialog" aria-modal="true" aria-label="Test run evidence drawer (loading)" className="flex h-full w-full max-w-2xl flex-col border-l border-white/15 bg-[#060e22]/95 p-6 text-[#f4f8ff]">
-            <span className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#ff8a32] uppercase">{`TEST RUN EVIDENCE DRAWER // ${selected.id}`}</span>
+            <span className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#ff8a32] uppercase">{`Test run · ${selected.id}`}</span>
             <h2 className="mt-1.5 text-xl font-extrabold tracking-tight">{selected.label}</h2>
             <p className="mt-4 font-mono text-xs text-[#8ea5c7]" role="status">
               {detailError ? `Could not load run evidence: ${detailError}` : "Loading full run evidence (conditions, measurements, source locators)…"}
@@ -364,7 +352,6 @@ export function TestRunEvidenceSection({
                 </h2>
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <StatusBadge status={toStatusBadgeValue(detail.provenanceStatus, investigationSource)} />
-                  <GravityBadges parts={gravityFromConds(detail.conditions)} />
                 </div>
               </div>
               <button

@@ -56,7 +56,7 @@ function isRecordVerified(record: DemoInvestigation): boolean {
 
 function getRecordProvenanceLabel(status: ProvenanceStatus, verified: boolean): string {
   if (status === "DEMO_FIXTURE") return "DEMO FIXTURE — NOT NASA MEASUREMENTS";
-  if (verified) return "NASA VERIFIED DATA";
+  if (verified) return "NASA PSI record";
   if (status === "NASA_VERIFIED_DATA") return "NASA RECORD — SOURCE UNVERIFIED";
   if (status === "NOT_REPORTED") return "NOT REPORTED";
   return status.replaceAll("_", " ");

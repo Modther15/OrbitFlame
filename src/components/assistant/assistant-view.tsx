@@ -13,11 +13,11 @@ import {
   RotateCcw,
   Send,
   ShieldAlert,
-  ShieldCheck,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { MarkdownAnswer } from "@/components/assistant/markdown";
 import { CitationEvidenceDrawer } from "@/components/assistant/citation-evidence-drawer";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
@@ -66,6 +66,7 @@ type AssistantViewProps = {
   familyShortcuts: FamilyShortcut[];
 };
 
+const ARTEMIS_QUESTION = "Why is the Artemis Moon Base (30% O2, 10.2 psi, 0.16 g) more hazardous than the ISS, and which PSI investigations best bound its fire risk?";
 const SESSION_STORAGE_KEY = "orbitflame-assistant-session-v1";
 const SESSION_CHANGE_EVENT = "orbitflame:assistant-session-change";
 const EMPTY_MESSAGES: AssistantConversationMessage[] = [];
@@ -131,6 +132,9 @@ function writeSessionMessages(nextMessages: AssistantConversationMessage[]): voi
     window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
   }
 }
+
+/** SNAKE_CASE enum -> "Sentence case" label. */
+const humanEnum = (v: string) => v.toLowerCase().replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
 export function AssistantView({
   dataScope,
@@ -250,7 +254,7 @@ export function AssistantView({
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#52b6ff] uppercase">
-                  PHASE 3 INSTRUMENTATION // EVIDENCE-ONLY SYNTHESIS
+                  SPACECRAFT FIRE SAFETY RESEARCH ASSISTANT
                 </p>
                 <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-[#f4f8ff] sm:text-3xl">
                   OrbitFlame AI Research Assistant
@@ -265,7 +269,7 @@ export function AssistantView({
               <div className="flex flex-col items-start gap-2 md:items-end">
                 <StatusBadge status={scopeBadgeStatus} />
                 <span className="font-mono text-[11px] text-[#8ea5c7]">
-                  ACTIVE SCOPE: <strong className="text-[#f4f8ff]">{dataScope}</strong> ({indexedCount} indexed records)
+                  {dataScope === "VERIFIED NASA PSI EXPERIMENTAL DATA" ? `${indexedCount} investigations indexed` : <>ACTIVE SCOPE: <strong className="text-[#f4f8ff]">{dataScope}</strong> ({indexedCount} indexed records)</>}
                 </span>
               </div>
             </div>
@@ -305,6 +309,23 @@ export function AssistantView({
           </Card>
 
           {/* Suggested Prompts + Investigation Family Shortcuts */}
+          {messages.length === 0 && (
+            <button
+              type="button"
+              data-testid="starter-artemis"
+              disabled={isLoading}
+              onClick={() => void submitQuestion(ARTEMIS_QUESTION, true)}
+              className="group w-full rounded-2xl border border-[#ff8a32]/45 bg-[linear-gradient(135deg,rgba(11,61,145,0.35)_0%,rgba(255,85,0,0.18)_100%)] p-5 text-left shadow-[0_10px_30px_-12px_rgba(255,85,0,0.45)] transition-all hover:border-[#ff8a32] disabled:opacity-60"
+            >
+              <span className="font-mono text-[10px] font-bold tracking-[.18em] text-[#ffb067] uppercase">Featured analysis</span>
+              <span className="mt-1 flex items-center justify-between gap-3">
+                <span className="text-lg font-extrabold text-[#f4f8ff]">Artemis Moon Base (30% O2 / 10.2 psi) Fire Risk &amp; PSI Bounding</span>
+                <ArrowRight size={18} className="shrink-0 text-[#ffb067] transition-transform group-hover:translate-x-1" aria-hidden="true" />
+              </span>
+              <span className="mt-1.5 block text-xs leading-5 text-[#c4d7f2]">Why is a 30% O2 lunar habitat more hazardous than the ISS, and which PSI investigations bound its flammability at 0.16 g?</span>
+            </button>
+          )}
+
           {messages.length === 0 && (
             <div className="grid gap-5 lg:grid-cols-[1.35fr_0.85fr]">
               <Card className="border border-white/10 bg-[#09152e]/80 p-5 backdrop-blur-md">
@@ -385,7 +406,7 @@ export function AssistantView({
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="font-mono text-[11px] font-semibold tracking-[.14em] text-[#8ea5c7] uppercase">
-                  ACTIVE SESSION // {messages.length} {messages.length === 1 ? "TURN" : "TURNS"}
+                  Conversation · {messages.length} {messages.length === 1 ? "TURN" : "TURNS"}
                 </span>
                 <button
                   type="button"
@@ -441,11 +462,13 @@ export function AssistantView({
                             }`}
                           >
                             <Activity size={11} aria-hidden="true" />
-                            {response.status}
+                            {humanEnum(response.status)}
                           </span>
-                          <span className="rounded-full border border-white/15 bg-white/[0.05] px-2.5 py-0.5 font-mono text-[10px] text-[#9cb2d2]">
-                            {response.sufficiency}
-                          </span>
+                          {!/^SUFFICIENT/.test(String(response.sufficiency)) && (
+                            <span className="rounded-full border border-white/15 bg-white/[0.05] px-2.5 py-0.5 text-[11px] text-[#9cb2d2]">
+                              {humanEnum(String(response.sufficiency))}
+                            </span>
+                          )}
                           <span
                             className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
                               response.dataMode === "VERIFIED_INDEXED_DATA"
@@ -453,7 +476,7 @@ export function AssistantView({
                                 : "border-amber-400/35 bg-amber-400/10 text-amber-300"
                             }`}
                           >
-                            {response.dataMode === "VERIFIED_INDEXED_DATA" ? "VERIFIED NASA PSI EXPERIMENTAL DATA" : "DEMO FIXTURE SCOPE"}
+                            {response.dataMode === "VERIFIED_INDEXED_DATA" ? "NASA PSI data" : "Demo fixtures"}
                           </span>
                           <span
                             data-testid="assistant-mode"
@@ -462,7 +485,7 @@ export function AssistantView({
                               response.mode === "llm" ? "border-sky-400/35 bg-sky-400/10 text-sky-200" : "border-white/20 bg-white/[0.05] text-[#c4d7f2]"
                             }`}
                           >
-                            mode: {response.mode}
+                            {response.mode === "llm" ? "AI-assisted" : "Evidence-only"}
                           </span>
                         </div>
 
@@ -486,10 +509,10 @@ export function AssistantView({
                         </div>
                       </div>
 
-                      {response.habitatView && (
+                      {response.habitatView && !String(response.mode).startsWith("deterministic") && (
                         <div data-testid="assistant-habitat-view" className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] p-3.5">
-                          <p className="font-mono text-[10px] font-semibold tracking-[.16em] text-amber-300 uppercase">Habitat ranking &amp; gravity caveat (deterministic, physics_ranker)</p>
-                          <p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-[#fff1d0]">{response.habitatView}</p>
+                          <p className="font-mono text-[10px] font-semibold tracking-[.16em] text-amber-300 uppercase">Habitat ranking &amp; gravity caveat</p>
+                          <div className="mt-1.5 text-[#fff1d0]"><MarkdownAnswer text={response.habitatView} citations={response.citations} onCite={setActiveCitation} /></div>
                         </div>
                       )}
 
@@ -512,19 +535,21 @@ export function AssistantView({
                         <div className="mt-4 space-y-4">
                           <div>
                             <p className="font-mono text-[10px] font-semibold tracking-[.16em] text-[#52b6ff] uppercase">
-                              Direct Evidence-Grounded Response
+                              Answer
                             </p>
-                            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-[#f4f8ff]">
-                              {response.claims.length > 0
-                                ? response.answer.split("\n\nSupporting Evidence:")[0].replace(/^Direct Answer:\s*/i, "")
-                                : response.answer}
-                            </p>
+                            <div className="mt-1.5">
+                              <MarkdownAnswer
+                                text={response.claims.length > 0 ? response.answer.split("\n\nSupporting Evidence:")[0].replace(/^Direct Answer:\s*/i, "") : response.answer}
+                                citations={response.citations}
+                                onCite={setActiveCitation}
+                              />
+                            </div>
                           </div>
 
                           {response.claims.length > 0 && (
                             <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#060e22]/75 p-4">
                               <p className="font-mono text-[10px] font-semibold tracking-[.16em] text-[#52b6ff] uppercase">
-                                Grounded Factual Claims &amp; Interactive Citations
+                                Supporting evidence
                               </p>
                               <ul className="space-y-2.5">
                                 {response.claims.map((claim) => (
@@ -532,19 +557,11 @@ export function AssistantView({
                                     key={claim.id}
                                     className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs leading-relaxed text-[#dce9fb]"
                                   >
-                                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                                      <span
-                                        className={`rounded px-1.5 py-0.5 font-mono text-[9.5px] font-bold uppercase ${
-                                          claim.evidenceType === "DERIVED_CALCULATION"
-                                            ? "bg-purple-400/15 text-purple-200"
-                                            : "bg-sky-400/15 text-sky-200"
-                                        }`}
-                                      >
-                                        {claim.evidenceType === "DERIVED_CALCULATION"
-                                          ? "Derived from recorded evidence"
-                                          : "Directly recorded evidence"}
-                                      </span>
-                                    </div>
+                                    {claim.evidenceType === "DERIVED_CALCULATION" && (
+                                      <div className="mb-1">
+                                        <span className="rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-purple-200">Calculated from recorded values</span>
+                                      </div>
+                                    )}
                                     <span>{claim.text} </span>
                                     <span className="inline-flex flex-wrap items-center gap-1 align-baseline">
                                       {claim.citationNumbers.map((num) => {
@@ -575,7 +592,7 @@ export function AssistantView({
                       {response.citations.length > 0 && (
                         <div className="mt-4 border-t border-white/10 pt-3.5">
                           <p className="font-mono text-[10px] font-semibold tracking-[.15em] text-[#7d95b8] uppercase">
-                            Retrieved Evidence Citations (Click to inspect source locator &amp; provenance)
+                            Citations (click to inspect the source row)
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {response.citations.map((cit) => (
@@ -632,9 +649,6 @@ export function AssistantView({
                         </div>
                       </div>
 
-                      <p className="mt-3.5 rounded-lg border border-white/10 bg-black/25 px-3 py-2 font-mono text-[10px] text-amber-200/90">
-                        PROVENANCE NOTICE: {response.provenanceBanner}
-                      </p>
                     </Card>
                   );
                 })}
@@ -663,46 +677,6 @@ export function AssistantView({
           {/* Question Input Dock */}
           <Card className="border border-[#36a9ff]/25 bg-[#09152e]/90 p-4 backdrop-blur-md sm:p-5">
             <form onSubmit={handleFormSubmit} className="space-y-3">
-              {/* Permanent Non-Interactive Strict Evidence Policy Indicator */}
-              <div
-                data-testid="strict-evidence-policy"
-                className="rounded-xl border border-[#36a9ff]/25 bg-[#061026]/90 px-3.5 py-2.5"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={15} className="shrink-0 text-[#52b6ff]" aria-hidden="true" />
-                    <span className="font-mono text-[10.5px] font-bold tracking-[.15em] text-[#e5f1ff] uppercase">
-                      STRICT EVIDENCE MODE
-                    </span>
-                  </div>
-                  <span className="rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-0.5 font-mono text-[9.5px] font-bold tracking-wider text-emerald-300 uppercase">
-                    ALWAYS ENABLED
-                  </span>
-                </div>
-                <p className="mt-1 text-xs leading-relaxed text-[#9cb2d2]">
-                  OrbitFlame AI uses only evidence retrieved from the indexed repository. External knowledge, web
-                  search, and unsupported claims are never used as evidence.
-                </p>
-              </div>
-
-              {/* Dynamic Validated Repository Dataset Status */}
-              <div
-                data-testid="active-dataset-status"
-                className={
-                  dataScope === "VERIFIED NASA PSI EXPERIMENTAL DATA"
-                    ? "rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2 font-mono text-[10.5px] font-semibold tracking-wider text-emerald-200 uppercase"
-                    : dataScope === "EMPTY"
-                      ? "rounded-lg border border-rose-400/30 bg-rose-500/10 px-3.5 py-2 font-mono text-[10.5px] font-semibold tracking-wider text-rose-200 uppercase"
-                      : "rounded-lg border border-amber-400/30 bg-amber-400/10 px-3.5 py-2 font-mono text-[10.5px] font-semibold tracking-wider text-amber-200 uppercase"
-                }
-              >
-                {dataScope === "VERIFIED NASA PSI EXPERIMENTAL DATA"
-                  ? "ACTIVE DATASET: VERIFIED NASA PSI EXPERIMENTAL DATA"
-                  : dataScope === "EMPTY"
-                    ? "ACTIVE DATASET: NO INDEXED RECORDS CONNECTED — ABSTENTION ACTIVE"
-                    : "ACTIVE DATASET: DEMO FIXTURES — FICTIONAL DATA — NOT NASA MEASUREMENTS"}
-              </div>
-
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label
                   htmlFor="assistant-question-input"
@@ -725,7 +699,7 @@ export function AssistantView({
                   }}
                   rows={2}
                   maxLength={1000}
-                  placeholder="Ask about indexed investigations (e.g., Compare oxygen, pressure, and airflow of D-001 and D-004)..."
+                  placeholder="Ask about spacecraft fire safety or PSI investigations (e.g., Why is the 30% O2 Moon Base more hazardous than ISS, or compare PSI-159 and PSI-69)..."
                   className="min-h-[58px] w-full flex-1 resize-y rounded-xl border border-white/15 bg-[#050b1b]/90 px-4 py-3 text-sm text-[#f4f8ff] placeholder:text-[#6a84a9] focus:border-[#36a9ff] focus:outline-none"
                 />
                 <button

@@ -1,7 +1,7 @@
 /** Typed shapes of the FlameGuard SI backend (src/api/server.py) and /public/data snapshots. */
 
-export const BENCHMARK_SOURCE_LABEL = "VERIFIED NASA PSI EXPERIMENTAL DATA";
-export const BENCHMARK_LABEL = "VERIFIED NASA PSI EXPERIMENTAL DATA" as const;
+export const BENCHMARK_SOURCE_LABEL = "NASA PSI data";
+export const BENCHMARK_LABEL = "NASA PSI data" as const;
 export const BENCHMARK_NOTE =
   "Every row is parsed unmodified from experimental tables and test matrices downloaded from psi.nasa.gov. Values a file does not state are NULL (never imputed). Model outputs are surrogate estimates trained only on these rows.";
 
