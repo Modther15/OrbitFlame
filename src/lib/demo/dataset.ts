@@ -1,4 +1,5 @@
 import { DemoInvestigationSchema, type DemoInvestigation } from "@/lib/api/schemas";
+import { normalizeToKnownSi } from "@/lib/science/units";
 
 export const DEMO_WARNING = "DEMO FIXTURE — FICTIONAL DATA — NOT NASA MEASUREMENTS" as const;
 
@@ -17,6 +18,44 @@ const definitions = [
   ["D-012", "Sensor cross-check in chamber mockup", "SAME", "Fictional aerosol surrogate", "Microgravity (illustrative)", "DETECTION", 20, null, 0.01],
 ] as const;
 
+function makeNumericCondition(parameterKey: string, value: number | null, explicitUnit: string) {
+  const unitOriginal = value !== null ? explicitUnit : null;
+  const norm = normalizeToKnownSi(value, unitOriginal);
+  return {
+    parameterKey,
+    valueOriginal: value,
+    textOriginal: null,
+    unitOriginal,
+    valueSi: norm.valueSi,
+    unitSi: norm.unitSi,
+    missingStatus: value !== null ? "PRESENT" : "NOT_REPORTED",
+    source: null,
+  } as const;
+}
+
+function buildConditions(
+  oxygenPercent: number | null,
+  pressureKpa: number | null,
+  airflowMps: number | null,
+  gravity: string,
+) {
+  return [
+    makeNumericCondition("oxygen_concentration", oxygenPercent, "%"),
+    makeNumericCondition("pressure", pressureKpa, "kPa"),
+    makeNumericCondition("airflow", airflowMps, "m/s"),
+    {
+      parameterKey: "gravity",
+      valueOriginal: null,
+      textOriginal: gravity,
+      unitOriginal: null,
+      valueSi: null,
+      unitSi: null,
+      missingStatus: "PRESENT",
+      source: null,
+    },
+  ] as const;
+}
+
 function makeRecord(row: typeof definitions[number]): DemoInvestigation {
   const [id, name, family, fuelMaterial, gravity, domain, oxygenPercent, pressureKpa, airflowMps] = row;
   const missingFields = [
@@ -30,7 +69,15 @@ function makeRecord(row: typeof definitions[number]): DemoInvestigation {
     summary: "Illustrative interface fixture only. This record describes no real experiment.",
     safetyDomains: [domain], gravityEnvironments: [gravity], provenanceStatus: "DEMO_FIXTURE",
     evidenceLevel: "ANALOGOUS", source: null,
-    testRuns: [{ id: `${id}-R1`, sourceRunKey: null, label: "Illustrative run 1", objectiveVariant: "Fictional test variation", provenanceStatus: "DEMO_FIXTURE", conditions: [], measurements: [] }],
+    testRuns: [{
+      id: `${id}-R1`,
+      sourceRunKey: null,
+      label: "Illustrative run 1",
+      objectiveVariant: "Fictional test variation",
+      provenanceStatus: "DEMO_FIXTURE",
+      conditions: buildConditions(oxygenPercent, pressureKpa, airflowMps, gravity),
+      measurements: [],
+    }],
     fuelMaterial,
     conditions: { oxygenPercent, pressureKpa, airflowMps, gravity, missingFields },
     findingsSummary: "Fictional findings summary supplied to exercise cards and detail layouts; not a scientific result.",

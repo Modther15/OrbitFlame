@@ -2,10 +2,12 @@ import { ArrowLeft, Database, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
+import { TestRunEvidenceSection } from "@/components/investigations/test-run-evidence-drawer";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { investigationRepository } from "@/lib/data/repository";
+import { isRecordVerified } from "@/lib/science/provenance";
 
 export default async function InvestigationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,7 +55,7 @@ export default async function InvestigationPage({ params }: { params: Promise<{ 
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-[#f4f8ff] sm:text-4xl">{record.name}</h1>
           </div>
-          <StatusBadge status="demo" />
+          <StatusBadge status={isRecordVerified(record) ? "verified" : "demo"} />
         </header>
 
         <Card className="border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md sm:p-8">
@@ -123,12 +125,45 @@ export default async function InvestigationPage({ params }: { params: Promise<{ 
           </Card>
         </div>
 
-        <Card className="mt-6 border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md">
-          <h2 className="text-lg font-extrabold tracking-tight text-[#f4f8ff]">Illustrative test run</h2>
-          <p className="mt-2 font-mono text-xs text-[#8ea5c7]">
-            {`${record.testRuns[0]?.label} // DEMO FIXTURE — No measured values or source run identifiers are provided.`}
-          </p>
-        </Card>
+        <TestRunEvidenceSection
+          investigationId={record.id}
+          investigationName={record.name}
+          investigationSource={record.source}
+          fixtureLabel={record.fixtureLabel}
+          testRuns={record.testRuns}
+        />
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#09152e]/75 px-5 py-4 backdrop-blur-md">
+          <span className="font-mono text-[10.5px] font-semibold tracking-wider text-[#8ea5c7] uppercase">
+            CONTINUE WORKFLOW ACROSS ORBITFLAME
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/compare?ids=${encodeURIComponent(record.id)}`}
+              className="rounded-lg border border-[#36a9ff]/35 bg-[#36a9ff]/10 px-3 py-1.5 font-mono text-[10.5px] font-semibold text-[#7bc5ff] hover:border-[#36a9ff]"
+            >
+              Compare {record.id}
+            </Link>
+            <Link
+              href="/mission-lab"
+              className="rounded-lg border border-[#ff8a32]/35 bg-[#ff5500]/10 px-3 py-1.5 font-mono text-[10.5px] font-semibold text-[#ffb067] hover:border-[#ff8a32]"
+            >
+              Open Mission Lab
+            </Link>
+            <Link
+              href="/evidence-gaps"
+              className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 font-mono text-[10.5px] font-semibold text-[#c4d7f2] hover:border-[#36a9ff]"
+            >
+              Inspect Evidence Gaps
+            </Link>
+            <Link
+              href="/sources"
+              className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 font-mono text-[10.5px] font-semibold text-[#c4d7f2] hover:border-[#36a9ff]"
+            >
+              Research Library
+            </Link>
+          </div>
+        </div>
       </main>
     </div>
   );

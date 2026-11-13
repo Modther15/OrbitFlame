@@ -113,7 +113,7 @@ export function MissionContexts({ verified }: { verified: number }) {
             </p>
           </div>
 
-          <Link href="/explore" className="lp-btn lp-btn--accent lp-btn--sm">Open Mission Lab <ArrowUpRight size={14} /></Link>
+          <Link href="/mission-lab" className="lp-btn lp-btn--accent lp-btn--sm">Open Mission Lab <ArrowUpRight size={14} /></Link>
         </article>
         <div className="lp-tabs" role="tablist" aria-label="Mission contexts">
           {CONTEXTS.map((ctx, i) => (

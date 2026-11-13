@@ -8,46 +8,92 @@ import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { DemoInvestigation } from "@/lib/api/schemas";
+import { useCompareSelection } from "@/lib/state/compare-selection";
+
+const GRAVITY_ORDER: Record<string, number> = {
+  microgravity: 0,
+  partial: 1,
+  normal: 2,
+};
+
+function gravityRank(value: string): number {
+  const lower = value.toLocaleLowerCase();
+  if (lower.includes("microgravity")) return GRAVITY_ORDER.microgravity;
+  if (lower.includes("partial")) return GRAVITY_ORDER.partial;
+  if (lower.includes("normal")) return GRAVITY_ORDER.normal;
+  return 99;
+}
 
 export function ExplorerView({ records, initialFamily = "" }: { records: DemoInvestigation[]; initialFamily?: string }) {
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState(initialFamily);
   const [domain, setDomain] = useState("");
+  const [gravity, setGravity] = useState("");
   const [showFilters, setShowFilters] = useState(true);
   const [sort, setSort] = useState("name-asc");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { selectedIds, toggleId, clearIds } = useCompareSelection();
 
-  const activeFilters = useMemo(() => [family, domain].filter(Boolean).length, [family, domain]);
-  const families = [...new Set(records.map((record) => record.family).filter((value): value is string => Boolean(value)))].sort();
-  const domains = [...new Set(records.flatMap((record) => record.safetyDomains))].sort();
+  const activeFilters = useMemo(() => [family, domain, gravity].filter(Boolean).length, [family, domain, gravity]);
+  const families = useMemo(
+    () => [...new Set(records.map((record) => record.family).filter((value): value is string => Boolean(value)))].sort(),
+    [records],
+  );
+  const domains = useMemo(() => [...new Set(records.flatMap((record) => record.safetyDomains))].sort(), [records]);
+  const gravities = useMemo(
+    () =>
+      [
+        ...new Set(
+          records
+            .flatMap((record) =>
+              record.gravityEnvironments.length > 0 ? record.gravityEnvironments : [record.conditions.gravity],
+            )
+            .filter(Boolean),
+        ),
+      ].sort((a, b) => gravityRank(a) - gravityRank(b) || a.localeCompare(b)),
+    [records],
+  );
 
   const filteredRecords = useMemo(() => {
     const term = query.trim().toLocaleLowerCase();
     const results = records.filter((record) => {
-      const searchable = [record.id, record.name, record.family, record.fuelMaterial, record.objective, record.findingsSummary]
+      const searchable = [
+        record.id,
+        record.name,
+        record.family,
+        record.fuelMaterial,
+        record.objective,
+        record.findingsSummary,
+        record.conditions.gravity,
+      ]
         .join(" ")
         .toLocaleLowerCase();
       return (
         (!term || searchable.includes(term)) &&
         (!family || record.family === family) &&
-        (!domain || record.safetyDomains.includes(domain as typeof record.safetyDomains[number]))
+        (!domain || record.safetyDomains.includes(domain as typeof record.safetyDomains[number])) &&
+        (!gravity || record.conditions.gravity === gravity || record.gravityEnvironments.includes(gravity))
       );
     });
     if (sort === "name-desc") results.sort((a, b) => b.name.localeCompare(a.name));
-    else if (sort === "completeness") results.sort((a, b) => b.dataCompleteness - a.dataCompleteness);
+    else if (sort === "completeness") results.sort((a, b) => b.dataCompleteness - a.dataCompleteness || a.name.localeCompare(b.name));
     else results.sort((a, b) => a.name.localeCompare(b.name));
     return results;
-  }, [records, query, family, domain, sort]);
+  }, [records, query, family, domain, gravity, sort]);
 
   const comparedRecords = useMemo(() => records.filter((r) => selectedIds.includes(r.id)), [records, selectedIds]);
 
   function toggleCompare(id: string) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : prev.length < 3 ? [...prev, id] : prev));
+    toggleId(id);
+  }
+
+  function clearOnlyFilters() {
+    setFamily("");
+    setDomain("");
+    setGravity("");
   }
 
   function clearFilters() {
-    setFamily("");
-    setDomain("");
+    clearOnlyFilters();
     setQuery("");
   }
 
@@ -119,13 +165,21 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                   {`COMPARE MATRIX // ${comparedRecords.length} OF 3 SELECTED`}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedIds([])}
-                className="font-mono text-[11px] tracking-wider text-[#9eb7e0] uppercase hover:text-white"
-              >
-                Clear comparison
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/compare?ids=${encodeURIComponent(comparedRecords.map((r) => r.id).join(","))}`}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(110deg,#0a1b3a_0%,#174585_45%,#2563eb_72%,#ff5500_100%)] bg-[length:240%_100%] bg-[position:0%_50%] px-4 py-1.5 font-mono text-[11px] font-semibold tracking-wider !text-white uppercase shadow-[0_8px_22px_-10px_rgba(37,99,235,0.45)] transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] hover:-translate-y-0.5 hover:bg-[position:100%_50%]"
+                >
+                  Open full Compare Lab <ArrowUpRight size={13} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={clearIds}
+                  className="font-mono text-[11px] tracking-wider text-[#9eb7e0] uppercase hover:text-white"
+                >
+                  Clear comparison
+                </button>
+              </div>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               {comparedRecords.map((rec) => (
@@ -212,11 +266,16 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
               <label className="mt-4 block font-mono text-[10px] font-semibold tracking-[.14em] text-[#8ea5c7] uppercase">
                 Gravity environment
                 <select
-                  value=""
-                  disabled
-                  className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#060e22]/50 px-3 font-sans text-sm text-[#5a7294]"
+                  value={gravity}
+                  onChange={(event) => setGravity(event.target.value)}
+                  className="mt-2 min-h-11 w-full rounded-xl border border-white/12 bg-[#060e22]/90 px-3 font-sans text-sm font-medium text-[#f0f5fc] outline-none transition-colors focus:border-[#36a9ff]"
                 >
-                  <option>All environments</option>
+                  <option value="" className="bg-[#060e22] text-[#f0f5fc]">All environments</option>
+                  {gravities.map((option) => (
+                    <option key={option} value={option} className="bg-[#060e22] text-[#f0f5fc]">
+                      {option}
+                    </option>
+                  ))}
                 </select>
               </label>
               <p className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-5 text-amber-200">
@@ -303,8 +362,46 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
               </div>
             ) : (
               <Card className="flex min-h-[280px] flex-col items-center justify-center border border-white/10 bg-[#09152e]/80 p-8 text-center backdrop-blur-md">
-                <h2 className="text-xl font-bold text-[#f4f8ff]">No matching demo records</h2>
-                <p className="mt-2 text-sm text-[#8ea5c7]">Try a different search keyword or reset the active filters.</p>
+                <span className="inline-block rounded-full border border-[#ff8a32]/30 bg-[#ff8a32]/10 px-3 py-1 font-mono text-[10px] font-semibold tracking-[.16em] text-[#ffb067] uppercase">
+                  0 MATCHES FOUND
+                </span>
+                <h2 className="mt-3 text-xl font-bold text-[#f4f8ff]">No matching demo records</h2>
+                <p className="mt-2 max-w-md text-sm text-[#8ea5c7]">
+                  {query && activeFilters > 0
+                    ? `No investigations match "${query.trim()}" with the ${activeFilters} active filter${activeFilters === 1 ? "" : "s"}.`
+                    : query
+                      ? `No investigations match "${query.trim()}".`
+                      : "No investigations match the selected filter combination."}
+                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-semibold tracking-wider text-[#e6effc] uppercase transition-colors hover:border-[#36a9ff]/40 hover:bg-white/[0.12] hover:text-white"
+                    >
+                      <X size={13} /> Clear search
+                    </button>
+                  )}
+                  {activeFilters > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearOnlyFilters}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-semibold tracking-wider text-[#e6effc] uppercase transition-colors hover:border-[#ff8a32]/40 hover:bg-white/[0.12] hover:text-white"
+                    >
+                      <Filter size={13} /> Reset filters
+                    </button>
+                  )}
+                  {(query || activeFilters > 0) && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[linear-gradient(110deg,#0a1b3a_0%,#174585_45%,#2563eb_72%,#ff5500_100%)] bg-[length:240%_100%] bg-[position:0%_50%] px-5 py-2 text-xs font-semibold tracking-wider !text-white uppercase shadow-[0_8px_22px_-10px_rgba(37,99,235,0.45)] transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] hover:-translate-y-0.5 hover:bg-[position:100%_50%]"
+                    >
+                      Show all {records.length} records
+                    </button>
+                  )}
+                </div>
               </Card>
             )}
           </div>

@@ -17,7 +17,7 @@ const demoRepository: InvestigationRepository = {
       return (!term || searchable.includes(term))
         && (!query.family || record.family === query.family)
         && (!query.domain || record.safetyDomains.includes(query.domain as typeof record.safetyDomains[number]))
-        && (!query.gravity || record.conditions.gravity === query.gravity);
+        && (!query.gravity || record.conditions.gravity === query.gravity || record.gravityEnvironments.includes(query.gravity));
     });
     if (query.sort === "name-desc") results.sort((a, b) => b.name.localeCompare(a.name));
     else if (query.sort === "completeness") results.sort((a, b) => b.dataCompleteness - a.dataCompleteness);

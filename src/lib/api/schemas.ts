@@ -87,4 +87,9 @@ export const DatasetSummarySchema = z.object({
 });
 export type DatasetSummary = z.infer<typeof DatasetSummarySchema>;
 export type ProvenanceStatus = z.infer<typeof ProvenanceStatusSchema>;
+export type MissingStatus = z.infer<typeof MissingStatusSchema>;
+export type SourceLocator = z.infer<typeof SourceLocatorSchema>;
+export type Condition = z.infer<typeof ConditionSchema>;
+export type Measurement = z.infer<typeof MeasurementSchema>;
+export type TestRun = z.infer<typeof TestRunSchema>;
 export type Investigation = z.infer<typeof InvestigationSchema>;
