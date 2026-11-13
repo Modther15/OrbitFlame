@@ -2,13 +2,13 @@
 
 import {
   Activity,
-  AlertTriangle,
   ArrowRight,
   Check,
   Copy,
   FileCheck2,
   FileSearch,
   FlaskConical,
+  Info,
   Loader2,
   RotateCcw,
   Send,
@@ -294,14 +294,14 @@ export function AssistantView({
                 data-testid="openai-config-notice"
                 className="mt-4 flex items-start gap-3 rounded-xl border border-[#36a9ff]/35 bg-[#0a1f46]/80 p-3.5 text-xs leading-5 text-[#d8e9ff]"
               >
-                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[#ff8a32]" aria-hidden="true" />
+                <Info size={16} className="mt-0.5 shrink-0 text-[#52b6ff]" aria-hidden="true" />
                 <div>
-                  <p className="font-mono text-[10.5px] font-bold tracking-wider text-[#ff8a32] uppercase">
-                    SERVER CONFIGURATION REQUIRED // OPENAI_API_KEY NOT SET
+                  <p className="font-mono text-[10.5px] font-bold tracking-wider text-[#52b6ff] uppercase">
+                    OPTIONAL AI SYNTHESIS IS OFF
                   </p>
                   <p className="mt-0.5 text-[#b5c9e8]">
-                    Server environment variable <code className="font-mono text-white">OPENAI_API_KEY</code> is not
-                    configured. Submitting a query will return a configuration notice rather than fabricating AI answers.
+                    Answers come from the NASA PSI records with row-level citations. To also get a written AI summary, set{" "}
+                    <code className="font-mono text-white">OPENAI_API_KEY</code> in <code className="font-mono text-white">.env</code> and restart. Everything else works without it.
                   </p>
                 </div>
               </div>

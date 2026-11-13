@@ -35,7 +35,7 @@ export type RunListResponse = {
   offset: number;
   limit: number;
   runs: RunStub[];
-  source: "live" | "static" | "fixture";
+  source: "live" | "local" | "static" | "fixture";
 };
 export type RunDetailResponse = { run: TestRun; source: SourceLocator | null };
 

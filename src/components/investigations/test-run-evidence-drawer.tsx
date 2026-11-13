@@ -193,6 +193,7 @@ export function TestRunEvidenceSection({
     if (firstRender.current) {
       firstRender.current = false;
       // the page HTML carries no run rows (keeps /investigations/* small): the first page is fetched on mount
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initial fetch on mount
       if (initialRuns.length === 0 && totalRuns > 0) load("", 0);
       return;
     }

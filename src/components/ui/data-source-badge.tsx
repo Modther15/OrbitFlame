@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { probeBackend } from "@/lib/api/backend-client";
 import { BENCHMARK_NOTE, type DataSourceMode } from "@/lib/api/backend-types";
 
-/** One compact status badge: live FlameGuard API vs. static snapshot, with real row / investigation counts from the API. */
+/** One compact status badge: external API, built-in API or static snapshot, with real row / investigation counts. */
 export function DataSourceBadge({ className = "" }: { className?: string }) {
   const [state, setState] = useState<{ mode: DataSourceMode | "checking"; rows?: number; investigations?: number; files?: string[] }>({ mode: "checking" });
 
@@ -28,8 +28,8 @@ export function DataSourceBadge({ className = "" }: { className?: string }) {
     };
   }, []);
 
-  const live = state.mode === "live";
-  const prefix = state.mode === "checking" ? "CHECKING DATA SOURCE" : live ? "LIVE API" : state.mode === "static" ? "STATIC SNAPSHOT" : "OFFLINE";
+  const live = state.mode === "live" || state.mode === "local";
+  const prefix = state.mode === "checking" ? "CHECKING DATA SOURCE" : state.mode === "live" ? "LIVE API" : state.mode === "local" ? "BUILT-IN API" : state.mode === "static" ? "STATIC SNAPSHOT" : "OFFLINE";
   const counts = state.rows !== undefined ? ` · ${state.rows.toLocaleString("en-US")} NASA PSI Rows` : "";
   return (
     <div className={`rounded-xl border border-white/10 bg-[#060e22]/80 p-3 ${className}`} title={BENCHMARK_NOTE} data-testid="data-source-badge">

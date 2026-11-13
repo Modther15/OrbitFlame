@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { API_BASE, fetchLive } from "@/lib/api/backend-core";
+import { API_BASE, HAS_EXTERNAL_API, fetchLive } from "@/lib/api/backend-core";
 import { AssistantApiResponseSchema, type AssistantApiResponse, type AssistantCitation, type AssistantTurnInput } from "@/lib/assistant/assistant-response-schema";
 import { retrieveEvidenceForQuestion } from "@/lib/assistant/retrieval";
 import type { InvestigationRepository } from "@/lib/data/repository";
@@ -87,9 +87,10 @@ export function detectMissionHabitat(question: string, pinned?: string[]): strin
 const FASTAPI_URL = (process.env.FASTAPI_URL || "").replace(/\/$/, "");
 const MISSION_TIMEOUT_MS = 4000;
 
-/** Server-side delegation to FastAPI /api/assistant (env FASTAPI_URL, default NEXT_PUBLIC_API_BASE / http://localhost:8000); short timeout. */
+/** Optional server-side delegation to an external backend's /api/assistant (env FASTAPI_URL, else NEXT_PUBLIC_API_BASE); skipped when neither is set. */
 async function fastApiAssistant(question: string, history: AssistantTurnInput[], ids: string[] | undefined): Promise<AssistantApiResponse | null> {
   const base = FASTAPI_URL || API_BASE;
+  if (!base) return null;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), MISSION_TIMEOUT_MS);
   try {
@@ -105,7 +106,7 @@ async function fastApiAssistant(question: string, history: AssistantTurnInput[],
     if (!parsed.success) throw new Error(`unexpected shape: ${parsed.error.issues[0]?.message}`);
     return parsed.data;
   } catch (e) {
-    console.error("[assistant] FastAPI delegation failed:", e instanceof Error ? e.message : String(e));
+    console.error("[assistant] external backend delegation failed:", e instanceof Error ? e.message : String(e));
     return null;
   } finally {
     clearTimeout(timer);
@@ -123,13 +124,14 @@ export async function missionAnswer(habitat: string, question: string, history: 
   if (!r) return null;
   return {
     requestId: crypto.randomUUID(), mode: "deterministic_fallback", dataMode: "VERIFIED_INDEXED_DATA",
-    fallbackReason: "FastAPI :8000 unreachable; precomputed habitat readout from the static snapshot (same builder, same ranking)",
+    fallbackReason: "precomputed habitat readout from the committed snapshot (same builder, same ranking)",
     status: "ANSWERED", sufficiency: "SUFFICIENT_VERIFIED", provenanceBanner: banner(), answer: r.answer, habitatView: r.habitatView ?? null, claims: r.claims, citations: r.citations,
     limitations: r.limitations, abstained: false, abstentionReason: null, retrievedInvestigations: r.retrievedInvestigations,
   };
 }
 
 async function viaFastApi(question: string, history: AssistantTurnInput[], ids: string[] | undefined): Promise<AssistantApiResponse | null> {
+  if (!HAS_EXTERNAL_API) return null;
   try {
     const raw = await fetchLive<unknown>(
       "/api/assistant",
@@ -138,12 +140,12 @@ async function viaFastApi(question: string, history: AssistantTurnInput[], ids: 
     );
     const parsed = AssistantApiResponseSchema.safeParse(raw);
     if (!parsed.success) {
-      console.error("[assistant] FastAPI /api/assistant returned an unexpected shape:", parsed.error.issues[0]?.message);
+      console.error("[assistant] external backend /api/assistant returned an unexpected shape:", parsed.error.issues[0]?.message);
       return null;
     }
     return parsed.data;
   } catch (e) {
-    console.error("[assistant] FastAPI /api/assistant unreachable, using the local snapshot builder:", e instanceof Error ? e.message : String(e));
+    console.error("[assistant] external backend /api/assistant unreachable, using the local snapshot builder:", e instanceof Error ? e.message : String(e));
     return null;
   }
 }
@@ -212,12 +214,12 @@ async function localBuilder(question: string, history: AssistantTurnInput[], ids
     lines.push("", "## Caveats", "", "- Every PSI row is ISS/Cygnus flight data at 0.0 g, so none is a measured 0.16 g test.", `- ${PROXY_CAVEAT}`);
   }
   return {
-    requestId: crypto.randomUUID(), mode: "deterministic_fallback", dataMode: "VERIFIED_INDEXED_DATA", fallbackReason: `${reason} (local snapshot builder; FastAPI unreachable)`,
+    requestId: crypto.randomUUID(), mode: "deterministic_fallback", dataMode: "VERIFIED_INDEXED_DATA", fallbackReason: `${reason} (built from the committed NASA PSI snapshot)`,
     status: "ANSWERED", sufficiency: "SUFFICIENT_VERIFIED", provenanceBanner: banner(), answer: lines.join("\n"), claims, citations,
     limitations: [
       "Evidence-only: values are copied or counted from the ingested PSI files; quantities a file does not state are not shown.",
       "All PSI rows are flight data at actual gravity 0.0 g (ISS/Cygnus baseline, inferred); effective-gravity values are a heuristic proxy, not measured partial-gravity results.",
-      "Built from the static snapshot because the evidence API was unreachable; start the FastAPI server for the full database-backed answer.",
+      "Built from the committed NASA PSI snapshots bundled with the app (public/data), not from a live database query.",
     ],
     abstained: false, abstentionReason: null,
     retrievedInvestigations: recs.map((r) => ({ id: r.id, name: r.name, family: r.family, missingFields: r.conditions.missingFields })),

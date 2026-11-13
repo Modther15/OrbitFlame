@@ -1,5 +1,7 @@
 # FLAME Intelligence — Implementation Plan
 
+> Historical log. It was written while the app still shipped only fictional demo fixtures. The app now runs on real NASA PSI data (2,051 rows from 19 files); see `README.md` for the current setup and data policy. `DEMO_MODE=true` still switches the fictional fixtures back on for UI testing.
+
 ## Phase 0 — Reconnaissance and requirements analysis
 
 ### Functional requirements

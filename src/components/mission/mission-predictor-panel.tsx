@@ -275,7 +275,7 @@ export function MissionPredictorPanel({
       setFamBusy(true);
       predictFlammabilityRaw(body)
         .then((r) => { if (alive) { setFamRes(r); setFamErr(null); } })
-        .catch(() => { if (alive) { setFamRes(null); setFamErr("The prediction models and nearest-test lookup need the live API. Start it with ./start_orbitflame.sh."); } })
+        .catch(() => { if (alive) { setFamRes(null); setFamErr("The prediction models could not be reached. Reload the page; if it persists, restart the app (npm run dev or npm start)."); } })
         .finally(() => alive && setFamBusy(false));
     }, 250);
     return () => {
@@ -432,7 +432,7 @@ export function MissionPredictorPanel({
               ) : (
                 <p className="mt-1.5 text-xs text-[#8ea5c7]">Physics response unavailable.</p>
               )}
-              {flam?.approximate && <p className="mt-2 text-[11px] text-amber-300">Static snapshot: nearest precomputed grid cell. Start the API for exact values.</p>}
+              {flam?.approximate && <p className="mt-2 text-[11px] text-amber-300">Fallback mode: nearest precomputed grid cell. Run the app with npm run dev / npm start for exact values.</p>}
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 /**
- * Shared human-readable labels for PSI table keys returned by the FlameGuard API.
+ * Shared human-readable labels for PSI table keys returned by the OrbitFlame API.
  * Never render a raw snake_case key in the UI; pass it through humanizeKey().
  */
 

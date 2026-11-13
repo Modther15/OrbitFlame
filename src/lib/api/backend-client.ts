@@ -1,9 +1,14 @@
 "use client";
-/** Browser-side backend client: live API with ~2.5 s timeout, automatic fallback to /data/*.json snapshots. */
+/**
+ * Browser-side data client. Order: external backend (only if NEXT_PUBLIC_API_BASE is set) -> the app's own /api routes ->
+ * in-browser engine / /data/*.json snapshots. Every step returns real PSI data; nothing is simulated.
+ */
 import {
   API_BASE,
   API_TIMEOUT_MS,
-  fetchLive,
+  ApiHttpError,
+  HAS_EXTERNAL_API,
+  fetchApi,
   isLiveCoolingDown,
   loadWithFallback,
   markLiveDown,
@@ -36,10 +41,10 @@ async function loadSnapshot(file: string): Promise<unknown> {
 
 export { API_BASE };
 
-/** Probe the API; returns live/static plus meta (provenance label, generation time). */
+/** Probe the API; returns live (external) / local (built-in routes) / static plus meta (provenance label, generation time). */
 export async function probeBackend(): Promise<Loaded<MetaPayload>> {
   resetLiveCooldown();
-  return loadWithFallback<MetaPayload>("/api/health", "meta.json", loadSnapshot);
+  return loadWithFallback<MetaPayload>("/api/health", "meta.json", loadSnapshot, undefined, { sameOrigin: true });
 }
 
 /** Actual-gravity vs effective-gravity-proxy ladder (live /api/effective-gravity, else /data/effective_gravity.json). */
@@ -66,19 +71,26 @@ function loadGridSnapshot(g: number): Promise<GridsSnapshot> {
 
 export type FlammabilityResult = { response: FlammabilityResponse; source: DataSourceMode; approximate: boolean };
 
-/** Live model call; static mode does a nearest-cell lookup on the precomputed grid for the closest gravity. */
+/** API call (external or built-in) -> in-browser engine -> nearest precomputed grid cell (last resort, flagged approximate). */
 export async function predictFlammability(input: FlammabilityInput): Promise<FlammabilityResult> {
-  if (!isLiveCoolingDown()) {
+  if (!isLiveCoolingDown() || !HAS_EXTERNAL_API) {
     try {
-      const response = await fetchLive<FlammabilityResponse>("/api/predict/flammability", {
+      const r = await fetchApi<FlammabilityResponse>("/api/predict/flammability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      return { response, source: "live", approximate: false };
-    } catch {
-      markLiveDown();
+      return { response: r.data, source: r.source, approximate: false };
+    } catch (e) {
+      if (e instanceof ApiHttpError) throw e;
+      if (HAS_EXTERNAL_API) markLiveDown();
     }
+  }
+  try {
+    const { flammabilityInBrowser } = await import("@/lib/engine/browser");
+    return { response: await flammabilityInBrowser(input), source: "static", approximate: false };
+  } catch {
+    // fall through to the grid lookup
   }
   const gNear = nearest(GRID_GRAVITIES, input.gravity_g);
   const snap = await loadGridSnapshot(gNear);
@@ -110,19 +122,26 @@ export async function predictFlammability(input: FlammabilityInput): Promise<Fla
 
 export type SmokeResult = { response: SmokeAnalyzerResponse; source: DataSourceMode; approximate: boolean; note: string };
 
-/** Empirical SAME / SAME-R analyzer. Live API (200 always: model or nearest real tests) -> static snapshot grid of the same responses. */
+/** Empirical SAME / SAME-R analyzer. API (external or built-in; 200 always: model or nearest real tests) -> in-browser engine -> snapshot grid of the same responses. */
 export async function predictSmokeDust(input: SmokeInput): Promise<SmokeResult> {
-  if (!isLiveCoolingDown()) {
+  if (!isLiveCoolingDown() || !HAS_EXTERNAL_API) {
     try {
-      const response = await fetchLive<SmokeAnalyzerResponse>("/api/predict/smoke-dust", {
+      const r = await fetchApi<SmokeAnalyzerResponse>("/api/predict/smoke-dust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      return { response, source: "live", approximate: false, note: "Live API" };
-    } catch {
-      markLiveDown();
+      return { response: r.data, source: r.source, approximate: false, note: r.source === "live" ? "External API" : "Built-in API" };
+    } catch (e) {
+      if (e instanceof ApiHttpError) throw e;
+      if (HAS_EXTERNAL_API) markLiveDown();
     }
+  }
+  try {
+    const { smokeInBrowser } = await import("@/lib/engine/browser");
+    return { response: await smokeInBrowser(input), source: "static", approximate: false, note: "Computed in the browser from the bundled PSI tables" };
+  } catch {
+    // fall through to the precomputed snapshot
   }
   const snap = (await loadSnapshot("smoke_dust_examples.json")) as SmokeSnapshot;
   const mats = snap.materials;
@@ -189,28 +208,41 @@ export async function predictSmokeDust(input: SmokeInput): Promise<SmokeResult> 
     },
     source: "static",
     approximate: true,
-    note: `Static snapshot: precomputed response for ${mat}, ${v} cm/s, ${a} s aging (nearest grid point). Start the API for exact input handling.`,
+    note: `Static snapshot: precomputed response for ${mat}, ${v} cm/s, ${a} s aging (nearest grid point). Run the app with npm run dev / npm start for exact input handling.`,
   };
 }
 
-/** Upload requires the live API; throws a friendly error in static mode. */
-export async function uploadDataset(file: File): Promise<UploadPayload> {
+async function postUpload(base: string, file: File): Promise<UploadPayload> {
   const form = new FormData();
   form.append("file", file);
-  let res: Response;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), Math.max(API_TIMEOUT_MS, 15000));
   try {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), Math.max(API_TIMEOUT_MS, 15000));
-    res = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: form, signal: ctl.signal });
+    const res = await fetch(`${base}/api/upload`, { method: "POST", body: form, signal: ctl.signal });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+      throw new ApiHttpError(res.status, typeof j?.detail === "string" ? j.detail : `Upload failed (${res.status})`);
+    }
+    return (await res.json()) as UploadPayload;
+  } finally {
     clearTimeout(timer);
-  } catch {
-    throw new Error("Upload needs the live API. The app is currently running from static snapshots; start the backend (./start_orbitflame.sh) to enable parsing.");
   }
-  if (!res.ok) {
-    const j = (await res.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(j?.detail ?? `Upload failed (${res.status})`);
+}
+
+/** Parse a PSI export (nothing is stored): external backend (if configured) -> built-in /api/upload -> parsed in the browser. */
+export async function uploadDataset(file: File): Promise<UploadPayload> {
+  const bases = [...(HAS_EXTERNAL_API && !isLiveCoolingDown() ? [API_BASE] : []), ""];
+  for (const base of bases) {
+    try {
+      return await postUpload(base, file);
+    } catch (e) {
+      // a definitive answer (invalid file, too large, unsupported format) is shown as is; anything else tries the next option
+      if (e instanceof ApiHttpError && e.status >= 400 && e.status < 500 && e.status !== 404 && e.status !== 405) throw new Error(e.message);
+      if (base && HAS_EXTERNAL_API) markLiveDown();
+    }
   }
-  return (await res.json()) as UploadPayload;
+  const { uploadInBrowser } = await import("@/lib/engine/browser");
+  return uploadInBrowser(file);
 }
 
 /* ---- Lazy, once-per-page-load shared loaders for the Mission Lab panel (not embedded in page props) ---- */
@@ -260,11 +292,18 @@ export function loadVariableSummary(): Promise<Loaded<VarSummaryPayload>> {
   return varsPromise;
 }
 
-/** Live-only call of POST /api/predict/flammability with an arbitrary audited-feature body (needs the model bundle, no static fallback). */
+/** POST /api/predict/flammability with an arbitrary audited-feature body: API (external or built-in) -> in-browser engine. */
 export async function predictFlammabilityRaw(body: Record<string, unknown>): Promise<FlammabilityResponse> {
-  return fetchLive<FlammabilityResponse>("/api/predict/flammability", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }, 8000);
+  try {
+    const r = await fetchApi<FlammabilityResponse>("/api/predict/flammability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }, 8000);
+    return r.data;
+  } catch (e) {
+    if (e instanceof ApiHttpError) throw e;
+  }
+  const { flammabilityInBrowser } = await import("@/lib/engine/browser");
+  return flammabilityInBrowser(body);
 }

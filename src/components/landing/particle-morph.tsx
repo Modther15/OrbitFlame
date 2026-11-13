@@ -440,6 +440,7 @@ export function ParticleMorph({ shapes, active = 0, count = 5200, pointSize = 9,
   const reduced = useReducedMotion();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only capability probe, must run after mount
     setSoft(isSoftwareRenderer());
   }, []);
 

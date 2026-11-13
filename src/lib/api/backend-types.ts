@@ -1,4 +1,4 @@
-/** Typed shapes of the FlameGuard SI backend (src/api/server.py) and /public/data snapshots. */
+/** Typed shapes of the API responses (built-in /api routes, optional external backend) and the /public/data snapshots. */
 
 export const BENCHMARK_SOURCE_LABEL = "NASA PSI data";
 export const BENCHMARK_LABEL = "NASA PSI data" as const;
@@ -238,7 +238,8 @@ export type SmokeSnapshot = Provenance & {
 
 export type UploadPayload = Provenance & { filename: string; n_rows: number; persisted: boolean; rows: Record<string, unknown>[] };
 
-export type DataSourceMode = "live" | "static" | "fixture";
+/** live = external backend (NEXT_PUBLIC_API_BASE); local = the app's own /api routes; static = committed snapshots in public/data; fixture = legacy demo data. */
+export type DataSourceMode = "live" | "local" | "static" | "fixture";
 export type MetaPayload = Provenance & { generated?: string; rows?: number; investigations?: number; mode?: string };
 
 /** /api/effective-gravity and public/data/effective_gravity.json: actual-gravity vs effective-gravity (HEURISTIC PROXY) ladder. */
