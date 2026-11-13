@@ -1,10 +1,11 @@
-import type { DemoInvestigation } from "@/lib/api/schemas";
 import {
   deriveDatasetScope,
   extractRecordNumericCondition,
   formatProvenanceTag,
   isRecordVerified,
+  presentMeasurementTotal,
   type DatasetScopeSummary,
+  type ScopeRecord,
 } from "@/lib/science/provenance";
 
 export type TechDomainKey = "PREVENTION" | "DETECTION" | "SUPPRESSION";
@@ -49,25 +50,25 @@ const DOMAIN_DESCRIPTORS: Record<
 > = {
   PREVENTION: {
     title: "Fire Prevention & Material Screening",
-    focus: "Ignition limits, flame-spread observations across polymers/textiles/gaseous mixtures, and barrier material trials indexed under PREVENTION.",
+    focus: "Ignition, flame spread and extinction of solids (BASS, BASS-II, Saffire), gaseous flames (ACME: Flame Design, BRE, CLD, E-FIELD, CFI-G) and smoke-point behaviour (SPICE) in the indexed PSI tables.",
     caveat:
-      "Design relevance (e.g., liner or polymer selection) is interpretive only. Indexed prevention fixtures establish no flight material qualification or safety rating.",
+      "These records inform material screening research; they are not a flight material qualification or safety rating.",
   },
   DETECTION: {
     title: "Smoke & Aerosol Detection",
-    focus: "Particle transport, optical sensor visibility, and smoke surrogate characterization indexed under DETECTION.",
+    focus: "Smoke aerosol generation and aging (SAME, SAME-R) and aerosol-counter qualification against a dust standard (DAFT).",
     caveat:
-      "Detector channel curves and particle size spectra are unpopulated in current fixtures. Visual links indicate domain grouping only, not alarm certification.",
+      "The tables hold Rt/R0 and weight-loss-rate outcomes; links show domain grouping, not alarm certification.",
   },
   SUPPRESSION: {
     title: "Suppression & Atmospheric Dilution",
-    focus: "Droplet extinction observation concepts and suppressant agent dispersion studies indexed under SUPPRESSION.",
+    focus: "Droplet-flame burning and extinction with O2, CO2, He and N dilution (FLEX, FLEX-2, CFI; liquid fuels in the CIR droplet apparatus).",
     caveat:
-      "Indexed suppression fixtures contain no measured extinction thresholds or concentration knockdown curves; never infer extinguishant efficacy from metadata.",
+      "Extinction diameters and burning rates are measured per test; no extinguishant-efficiency curve is derived here. Extinguishant efficacy is not inferred from metadata.",
   },
 };
 
-export function buildTechnologyMap(records: DemoInvestigation[]): TechnologyMapReport {
+export function buildTechnologyMap(records: ScopeRecord[]): TechnologyMapReport {
   const datasetScope = deriveDatasetScope(records);
   const allNodes: TechMapRecordNode[] = [];
 
@@ -77,10 +78,7 @@ export function buildTechnologyMap(records: DemoInvestigation[]): TechnologyMapR
       const o2 = extractRecordNumericCondition(rec, "oxygen_concentration");
       const p = extractRecordNumericCondition(rec, "pressure");
       const air = extractRecordNumericCondition(rec, "airflow");
-      const measCount = rec.testRuns.reduce(
-        (sum, run) => sum + run.measurements.filter((m) => m.missingStatus === "PRESENT").length,
-        0,
-      );
+      const measCount = presentMeasurementTotal(rec);
       const node: TechMapRecordNode = {
         id: rec.id,
         name: rec.name,
@@ -124,6 +122,6 @@ export function buildTechnologyMap(records: DemoInvestigation[]): TechnologyMapR
     clusters,
     allNodes,
     nonCausalNotice:
-      "ASSOCIATION MAP ONLY — Connections below represent shared safety-domain and family metadata in the active index. They NEVER imply scientific causation, shared flammability physics, or spacecraft hardware qualification.",
+      "Links show shared safety domain and program family only; they do not imply causation or hardware qualification.",
   };
 }

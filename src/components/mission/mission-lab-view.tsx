@@ -7,21 +7,23 @@ import {
   Compass,
   FileCheck2,
   GitCompareArrows,
-  Info,
   Loader2,
   RotateCcw,
-  ShieldAlert,
   Sparkles,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CitationEvidenceDrawer } from "@/components/assistant/citation-evidence-drawer";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
+import { habitatKeyFromParam } from "@/components/mission/habitat-keys";
+import { UploadPanel } from "@/components/mission/upload-panel";
+import { MissionPredictorLazy } from "@/components/mission/mission-predictor-lazy";
+import { Connections, GravityLadder } from "@/components/science/science-context";
 import { MissionPathwaySvg } from "@/components/mission/mission-pathway-svg";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
+import type { DataSourceMode } from "@/lib/api/backend-types";
 import type { AssistantApiResponse, AssistantCitation } from "@/lib/assistant/assistant-response-schema";
 import {
   matchMissionScenario,
@@ -33,12 +35,15 @@ import {
   type SafetyDomainOption,
 } from "@/lib/science/mission-matcher";
 import type { GravityRegimeClass } from "@/lib/science/provenance";
+import type { InvestigationSummary } from "@/lib/data/summary";
 import { setCompareIds } from "@/lib/state/compare-selection";
 
 type MissionLabViewProps = {
-  records: DemoInvestigation[];
+  records: InvestigationSummary[];
   isAiConfigured: boolean;
   initialHabitat?: string;
+  initialTab?: string;
+  dataSource?: DataSourceMode;
 };
 
 const CLASSIFICATION_STYLES: Record<EvidenceClassification, string> = {
@@ -151,7 +156,18 @@ const TEST_ASSUMPTION_PRESETS: readonly {
   },
 ];
 
-export function MissionLabView({ records, isAiConfigured, initialHabitat }: MissionLabViewProps) {
+type LabTab = "habitat" | "flammability" | "smoke" | "scenario";
+const TABS: { id: LabTab; label: string }[] = [
+  { id: "habitat", label: "Habitat Risk & PSI Ranker" },
+  { id: "flammability", label: "Flammability & Extinction Lab" },
+  { id: "smoke", label: "Smoke Detection Lab (SAME / SAME-R)" },
+  { id: "scenario", label: "Scenario Matcher & Live CSV Upload" },
+];
+
+export function MissionLabView({ records, isAiConfigured, initialHabitat, initialTab, dataSource = "fixture" }: MissionLabViewProps) {
+  const [tab, setTab] = useState<LabTab>(TABS.some((t) => t.id === initialTab) ? (initialTab as LabTab) : "habitat");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState<EvidenceClassification | "ALL">("ALL");
   const initialHabId = MISSION_HABITATS.some((h) => h.id === initialHabitat)
     ? (initialHabitat as MissionHabitatId)
     : "ISS";
@@ -178,13 +194,6 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
     }
     return report.matchedResults[0];
   }, [report.matchedResults, selectedMatchId]);
-
-  const scopeBadgeStatus =
-    report.datasetScope.scope === "VERIFIED_INDEXED_DATA"
-      ? "verified"
-      : report.datasetScope.scope === "EMPTY"
-        ? "empty"
-        : "demo";
 
   function selectHabitat(habId: MissionHabitatId) {
     const def = MISSION_HABITATS.find((h) => h.id === habId) ?? MISSION_HABITATS[0];
@@ -233,61 +242,100 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
     }
   }
 
+
+  const detail = detailId ? report.matchedResults.find((m) => m.recordId === detailId) ?? null : null;
+  const shownMatches = report.matchedResults.filter((m) => classFilter === "ALL" || m.classification === classFilter);
+  const classCounts = report.matchedResults.reduce<Record<string, number>>((acc, m) => ({ ...acc, [m.classification]: (acc[m.classification] ?? 0) + 1 }), {});
+
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#050b1b] text-[#f4f8ff] lg:grid lg:grid-cols-[260px_1fr]">
       <ExploreSpaceBackground />
       <Sidebar />
 
       <main className="explore-main-stage relative z-10 min-w-0 px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
-        <div className="mx-auto max-w-[1220px] space-y-6">
-          {/* Header & Non-Negotiable Scientific Boundary Disclaimer */}
+        <div className="mx-auto w-full max-w-none space-y-6">
           <Card className="border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md sm:p-7">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#52b6ff] uppercase">
-                  PHASE 4 INSTRUMENTATION // DETERMINISTIC SCENARIO MATCHER
+                  HABITAT FIRE RISK &amp; PREDICTIVE MISSION LAB
                 </p>
                 <h1 className="mt-1.5 flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-[#f4f8ff] sm:text-3xl">
                   <Compass size={26} className="text-[#ff8a32]" aria-hidden="true" />
-                  OrbitFlame Mission Lab
+                  Aerospace Fire Safety &amp; Combustion Workbench
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#9cb2d2]">
-                  Explore how a hypothetical mission scenario relates to existing indexed combustion research.
+                  Rank NASA microgravity combustion experiments for a crew habitat, predict flammability and extinction from real flight data, and study smoke detector response.
                 </p>
-              </div>
-              <div className="flex flex-col items-start gap-2 lg:items-end">
-                <StatusBadge status={scopeBadgeStatus} />
-                <span className="font-mono text-[11px] text-[#8ea5c7]">
-                  {report.datasetScope.activeDatasetBanner}
-                </span>
               </div>
             </div>
 
-            <div
-              data-testid="mission-lab-disclaimer"
-              className="mt-5 flex items-start gap-3 rounded-xl border border-[#ff8a32]/40 bg-[#ff5500]/10 p-3.5 text-xs leading-5 text-amber-100"
-            >
-              <ShieldAlert size={17} className="mt-0.5 shrink-0 text-[#ff8a32]" aria-hidden="true" />
-              <div>
-                <span className="font-mono text-[10.5px] font-bold tracking-wider text-[#ffb067] uppercase">
-                  SCIENTIFIC BOUNDARY DISCLAIMER
-                </span>
-                <p className="mt-0.5 font-medium text-[#fff2e2]">{report.disclaimer}</p>
-              </div>
+            <div role="tablist" aria-label="Mission lab modes" className="mt-5 inline-flex max-w-full flex-wrap gap-1 rounded-2xl border border-white/10 bg-[#060e22]/90 p-1" data-testid="lab-tabs">
+              {TABS.map((t) => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    id={`tab-${t.id}`}
+                    role="tab"
+                    type="button"
+                    aria-selected={active}
+                    aria-controls={`panel-${t.id}`}
+                    onClick={() => setTab(t.id)}
+                    className={`rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+                      active
+                        ? "bg-[linear-gradient(135deg,#0d254f_0%,#1a4a8f_100%)] text-white shadow-[inset_0_0_0_1px_rgba(54,169,255,0.5)]"
+                        : "text-[#9cb2d2] hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
-          <div className="grid gap-6 xl:grid-cols-[410px_minmax(0,1fr)]">
-            {/* LEFT: Hypothetical Mission Scenario Builder */}
-            <div className="space-y-5">
-              <Card className="border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md">
+          {tab === "habitat" && (
+            <div id="panel-habitat" role="tabpanel" aria-labelledby="tab-habitat" className="grid w-full grid-cols-1 gap-6">
+              <MissionPredictorLazy
+                key={`habitat-${habitatKeyFromParam(initialHabitat, scenario.habitat)}`}
+                view="habitat"
+                initialHabitat={habitatKeyFromParam(initialHabitat, scenario.habitat)}
+                dataSource={dataSource}
+                metadataOnly={records.filter((r) => r.rowStatus === "metadata_only").map((r) => ({ id: r.id, name: r.name }))}
+                totalInvestigations={records.length}
+                ladderSlot={<GravityLadder records={records} />}
+              />
+              <details className="group rounded-2xl border border-white/10 bg-[#09152e]/70 p-4 backdrop-blur-md">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-[#c4d7f2]">Cross-investigation connections</summary>
+                <div className="mt-3"><Connections /></div>
+              </details>
+            </div>
+          )}
+
+          {tab === "flammability" && (
+            <div id="panel-flammability" role="tabpanel" aria-labelledby="tab-flammability" className="grid w-full grid-cols-1 gap-6">
+              <MissionPredictorLazy key="flammability" view="flammability" initialHabitat={habitatKeyFromParam(initialHabitat, scenario.habitat)} dataSource={dataSource} metadataOnly={[]} totalInvestigations={records.length} />
+            </div>
+          )}
+
+          {tab === "smoke" && (
+            <div id="panel-smoke" role="tabpanel" aria-labelledby="tab-smoke" className="grid w-full grid-cols-1 gap-6">
+              <MissionPredictorLazy key="smoke" view="smoke" initialHabitat={habitatKeyFromParam(initialHabitat, scenario.habitat)} dataSource={dataSource} metadataOnly={[]} totalInvestigations={records.length} />
+            </div>
+          )}
+
+          {tab === "scenario" && (
+            <div id="panel-scenario" role="tabpanel" aria-labelledby="tab-scenario" className="grid w-full grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                              <Card className="h-full w-full border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
                   <div>
                     <p className="font-mono text-[10px] font-bold tracking-[.16em] text-[#ff8a32] uppercase">
-                      HYPOTHETICAL MISSION SCENARIO BUILDER
+                      Hypothetical mission scenario builder
                     </p>
                     <p className="mt-0.5 text-[11px] text-[#8ea5c7]">
-                      All inputs below represent user-entered assumptions — never NASA specifications or measurements.
+                      Inputs are your own assumptions, not NASA specifications. Each is compared with the median test conditions of every PSI investigation.
                     </p>
                   </div>
                   <button
@@ -304,7 +352,7 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                   <span className="font-mono text-[10px] font-semibold tracking-[.14em] text-[#52b6ff] uppercase">
                     1. Select Mission Context
                   </span>
-                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {MISSION_HABITATS.map((hab) => {
                       const active = scenario.habitat === hab.id;
                       return (
@@ -384,7 +432,7 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-3">
                     {/* Oxygen Concentration */}
                     <div>
                       <label
@@ -537,7 +585,7 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                 {/* Illustrative Test Input Presets */}
                 <div className="mt-5 border-t border-white/10 pt-4">
                   <p className="font-mono text-[9.5px] font-semibold tracking-[.15em] text-[#ffb067] uppercase">
-                    USER HYPOTHESIS TEST PRESETS (NOT NASA STANDARDS)
+                    Example scenarios (illustrative assumptions)
                   </p>
                   <div className="mt-2 grid gap-1.5">
                     {TEST_ASSUMPTION_PRESETS.map((preset) => (
@@ -554,137 +602,61 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                   </div>
                 </div>
               </Card>
-
-              {/* Documented Classification Rules */}
-              <Card className="border border-white/10 bg-[#09152e]/80 p-5 backdrop-blur-md">
-                <div className="flex items-center gap-2">
-                  <Info size={15} className="text-[#52b6ff]" aria-hidden="true" />
-                  <h2 className="font-mono text-[10.5px] font-bold tracking-[.16em] text-[#52b6ff] uppercase">
-                    DETERMINISTIC CLASSIFICATION RULES
-                  </h2>
-                </div>
-                <dl className="mt-3 space-y-2.5 text-xs">
-                  {report.ruleDefinitions.map((rule) => (
-                    <div key={rule.level} className="rounded-lg border border-white/10 bg-[#050d21]/80 p-2.5">
-                      <dt className="font-mono text-[10px] font-bold text-[#f4f8ff]">{rule.level}</dt>
-                      <dd className="mt-1 leading-relaxed text-[#9cb2d2]">{rule.rule}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </Card>
-            </div>
-
-            {/* RIGHT: Pathway Diagram, Matched Results, Evidence Stop Boundaries, Optional AI Explain */}
-            <div className="min-w-0 space-y-5">
-              <MissionPathwaySvg
-                habitat={report.habitat}
-                activeMatch={activeMatch}
-                overallHighestEvidence={report.overallHighestEvidence}
-              />
-
-              {/* Summary Telemetry Bar */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Card className="border border-white/10 bg-[#09152e]/80 p-4 backdrop-blur-md">
-                  <p className="font-mono text-[10px] tracking-[.14em] text-[#8ea5c7] uppercase">
-                    HIGHEST EVIDENCE LEVEL
-                  </p>
-                  <div className="mt-2">
-                    <span
-                      data-testid="mission-highest-classification"
-                      className={`inline-block rounded-full border px-3 py-1 font-mono text-xs font-bold ${
-                        CLASSIFICATION_STYLES[report.overallHighestEvidence]
-                      }`}
-                    >
-                      {report.overallHighestEvidence}
-                    </span>
+                <div className="min-w-0 space-y-5">
+                  <MissionPathwaySvg habitat={report.habitat} activeMatch={activeMatch} overallHighestEvidence={report.overallHighestEvidence} />
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Card className="border border-white/10 bg-[#09152e]/80 p-4 backdrop-blur-md">
+                      <p className="text-[11px] font-semibold text-[#8ea5c7]">Highest evidence level</p>
+                      <div className="mt-2">
+                        <span data-testid="mission-highest-classification" className={`inline-block rounded-full border px-3 py-1 font-mono text-xs font-bold ${CLASSIFICATION_STYLES[report.overallHighestEvidence]}`}>
+                          {report.overallHighestEvidence}
+                        </span>
+                      </div>
+                    </Card>
+                    <Card className="border border-white/10 bg-[#09152e]/80 p-4 backdrop-blur-md">
+                      <p className="text-[11px] font-semibold text-[#8ea5c7]">Matched investigations</p>
+                      <p className="mt-1.5 text-2xl font-extrabold text-[#f4f8ff]">{report.matchedResults.length} <span className="text-xs font-normal text-[#8ea5c7]">/ {records.length}</span></p>
+                    </Card>
+                    <Card className="border border-white/10 bg-[#09152e]/80 p-4 backdrop-blur-md">
+                      <p className="text-[11px] font-semibold text-[#8ea5c7]">No alignment</p>
+                      <p className="mt-1.5 text-2xl font-extrabold text-[#f4f8ff]">{report.unavailableRecords.length}</p>
+                    </Card>
                   </div>
-                </Card>
-
-                <Card className="border border-white/10 bg-[#09152e]/80 p-4 backdrop-blur-md">
-                  <p className="font-mono text-[10px] tracking-[.14em] text-[#8ea5c7] uppercase">
-                    INDEXED MATCHES FOUND
-                  </p>
-                  <p className="mt-1.5 text-2xl font-extrabold text-[#f4f8ff]">
-                    {report.matchedResults.length}{" "}
-                    <span className="text-xs font-normal text-[#8ea5c7]">/ {records.length} indexed</span>
-                  </p>
-                </Card>
-
-                <Card className="border border-white/10 bg-[#09152e]/80 p-4 backdrop-blur-md">
-                  <p className="font-mono text-[10px] tracking-[.14em] text-[#8ea5c7] uppercase">
-                    EXCLUDED / UNAVAILABLE
-                  </p>
-                  <p className="mt-1.5 text-2xl font-extrabold text-[#f4f8ff]">
-                    {report.unavailableRecords.length}{" "}
-                    <span className="text-xs font-normal text-[#8ea5c7]">zero alignment</span>
-                  </p>
-                </Card>
+                  <UploadPanel />
+                </div>
               </div>
 
-              {/* Optional Evidence-Only AI Summary of Matched Scope */}
               <Card className="border border-[#36a9ff]/25 bg-[#09152e]/85 p-5 backdrop-blur-md">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <Sparkles size={15} className="text-[#52b6ff]" aria-hidden="true" />
-                      <h2 className="font-mono text-[11px] font-bold tracking-[.16em] text-[#52b6ff] uppercase">
-                        OPTIONAL AI EVIDENCE EXPLANATION (STRICT MODE)
-                      </h2>
+                      <h2 className="text-sm font-bold text-[#f4f8ff]">AI evidence summary</h2>
                     </div>
-                    <p className="mt-1 text-xs text-[#9cb2d2]">
-                      Reuses the server-side evidence-only pipeline strictly scoped to matched records. Never alters
-                      deterministic classifications.
-                    </p>
+                    <p className="mt-1 text-xs text-[#9cb2d2]">Summarizes only the matched investigations below; never changes the deterministic classifications.</p>
                   </div>
                   <button
                     type="button"
                     disabled={aiLoading || report.matchedResults.length === 0}
                     onClick={() => void handleGenerateExplanation()}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0b3d91_0%,#ff5500_100%)] px-4 py-2.5 font-mono text-[11px] font-bold tracking-wider text-white uppercase disabled:opacity-45"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0b3d91_0%,#ff5500_100%)] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-45"
                   >
                     {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
-                    Summarize Matched Evidence
+                    Summarize matched evidence
                   </button>
                 </div>
-
                 {!isAiConfigured && !aiResponse && (
-                  <p className="mt-3 rounded-lg border border-[#36a9ff]/30 bg-[#06122c] px-3 py-2 font-mono text-[10.5px] text-[#8fd0ff]">
-                    OPENAI_API_KEY is not configured in server environment variables; deterministic matching above operates
-                    without LLM synthesis.
-                  </p>
+                  <p className="mt-3 rounded-lg border border-[#36a9ff]/30 bg-[#06122c] px-3 py-2 text-xs text-[#8fd0ff]">The AI summary is not configured on this server; deterministic matching works without it.</p>
                 )}
-
-                {aiError && (
-                  <p className="mt-3 rounded-lg border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-                    {aiError}
-                  </p>
-                )}
-
+                {aiError && <p className="mt-3 rounded-lg border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{aiError}</p>}
                 {aiResponse && (
-                  <div
-                    data-testid="mission-ai-explanation"
-                    className="mt-4 space-y-3 rounded-xl border border-white/10 bg-[#050d21]/90 p-4"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-[#36a9ff]/35 bg-[#36a9ff]/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-[#7bc5ff]">
-                        {aiResponse.status}
-                      </span>
-                      <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[10px] text-[#9cb2d2]">
-                        {aiResponse.sufficiency}
-                      </span>
-                    </div>
+                  <div data-testid="mission-ai-explanation" className="mt-4 space-y-3 rounded-xl border border-white/10 bg-[#050d21]/90 p-4">
                     <p className="text-xs leading-relaxed text-[#e5efff]">{aiResponse.answer}</p>
                     {aiResponse.citations.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {aiResponse.citations.map((cit) => (
-                          <button
-                            key={cit.evidenceId}
-                            type="button"
-                            onClick={() => setActiveCitation(cit)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-[#36a9ff]/30 bg-[#0a1d42] px-2.5 py-1 font-mono text-[10.5px] text-[#7bc5ff] hover:border-[#36a9ff]"
-                          >
-                            <FileCheck2 size={11} aria-hidden="true" />[{cit.citationNumber}] {cit.investigationId} ·{" "}
-                            {cit.fieldLabel}
+                          <button key={cit.evidenceId} type="button" onClick={() => setActiveCitation(cit)} className="inline-flex items-center gap-1 rounded-lg border border-[#36a9ff]/30 bg-[#0a1d42] px-2.5 py-1 font-mono text-[10.5px] text-[#7bc5ff] hover:border-[#36a9ff]">
+                            <FileCheck2 size={11} aria-hidden="true" />[{cit.citationNumber}] {cit.investigationId}
                           </button>
                         ))}
                       </div>
@@ -693,174 +665,62 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                 )}
               </Card>
 
-              {/* Matched Results */}
               {report.matchedResults.length === 0 ? (
-                <Card
-                  data-testid="mission-no-match"
-                  className="border border-amber-400/30 bg-[#09152e]/85 p-6 text-center backdrop-blur-md"
-                >
+                <Card data-testid="mission-no-match" className="border border-amber-400/30 bg-[#09152e]/85 p-6 text-center backdrop-blur-md">
                   <AlertTriangle size={24} className="mx-auto text-amber-300" aria-hidden="true" />
-                  <h2 className="mt-2 text-base font-bold text-[#f4f8ff]">
-                    UNAVAILABLE — Zero Compatible Indexed Records
-                  </h2>
-                  <p className="mx-auto mt-1.5 max-w-xl text-xs leading-relaxed text-[#9cb2d2]">
-                    No indexed investigations agreed with the supplied scenario constraints without violating unit
-                    compatibility or gravity-regime boundaries. Relax optional inputs or reset scenario assumptions to
-                    inspect analogous context.
-                  </p>
+                  <h2 className="mt-2 text-base font-bold text-[#f4f8ff]">No compatible PSI investigations</h2>
+                  <p className="mx-auto mt-1.5 max-w-xl text-xs leading-relaxed text-[#9cb2d2]">No investigation agrees with your scenario without violating unit or gravity-regime limits. Relax an optional input or reset the scenario.</p>
                 </Card>
               ) : (
-                <div className="space-y-4">
-                  {report.matchedResults.map((match) => {
-                    const isSelectedPathway = activeMatch?.recordId === match.recordId;
-                    return (
-                      <Card
-                        key={match.recordId}
-                        data-testid={`mission-match-${match.recordId}`}
-                        className={`border p-5 backdrop-blur-md transition-colors ${
-                          isSelectedPathway
-                            ? "border-[#36a9ff]/55 bg-[#091938]/90"
-                            : "border-white/10 bg-[#09152e]/80"
-                        }`}
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-bold text-[#ff8a32]">
-                                {match.recordId} {match.family ? `// ${match.family}` : ""}
-                              </span>
-                              <span
-                                className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold ${
-                                  CLASSIFICATION_STYLES[match.classification]
-                                }`}
-                              >
-                                {match.classification}
-                              </span>
-                              <span
-                                className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
-                                  match.isVerified
-                                    ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-200"
-                                    : "border-amber-400/35 bg-amber-400/10 text-amber-200"
-                                }`}
-                              >
-                                {match.provenanceLabel}
-                              </span>
-                            </div>
-                            <h3 className="mt-1.5 text-lg font-extrabold text-[#f4f8ff]">{match.recordName}</h3>
-                            <p className="mt-1 text-xs leading-relaxed text-[#c9daf2]">{match.whyMatched}</p>
-                            <p className="mt-1 font-mono text-[10.5px] text-[#7d95b8]">
-                              RULE TRACE: {match.classificationRuleTrace}
-                            </p>
+                <section data-testid="matched-grid-section">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-base font-bold text-[#f4f8ff]">{report.matchedResults.length} matched PSI investigations</h2>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by evidence level">
+                      {(["ALL", ...Object.keys(classCounts)] as (EvidenceClassification | "ALL")[]).map((c) => (
+                        <button key={c} type="button" aria-pressed={classFilter === c} onClick={() => setClassFilter(c)} className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${classFilter === c ? "border-[#ff8a32]/55 bg-[#ff5500]/20 text-[#ffb067]" : "border-white/10 bg-[#050b1b] text-[#9cb2d2] hover:text-white"}`}>
+                          {c === "ALL" ? `All (${report.matchedResults.length})` : `${c.replace("_", " ")} (${classCounts[c]})`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {shownMatches.map((match) => {
+                      const sel = activeMatch?.recordId === match.recordId;
+                      return (
+                        <Card key={match.recordId} data-testid={`mission-match-${match.recordId}`} className={`flex flex-col border p-4 backdrop-blur-md transition-colors ${sel ? "border-[#36a9ff]/55 bg-[#091938]/90" : "border-white/10 bg-[#09152e]/80"}`}>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-mono text-xs font-bold text-[#ff8a32]">{match.recordId}</span>
+                            <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold ${CLASSIFICATION_STYLES[match.classification]}`}>{match.classification.replace("_", " ")}</span>
                           </div>
-
-                          <div className="flex shrink-0 flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedMatchId(match.recordId)}
-                              className={`rounded-xl border px-3 py-1.5 font-mono text-[10.5px] font-semibold transition-colors ${
-                                isSelectedPathway
-                                  ? "border-[#36a9ff] bg-[#36a9ff]/20 text-white"
-                                  : "border-white/15 bg-white/[0.04] text-[#c4d7f2] hover:border-[#36a9ff]"
-                              }`}
-                            >
-                              {isSelectedPathway ? "Viewing in Pathway" : "Inspect Pathway"}
+                          <h3 className="mt-1.5 text-sm font-extrabold break-words text-[#f4f8ff]">{match.recordName}</h3>
+                          {match.family && <p className="text-[11px] text-[#8ea5c7]">{match.family}</p>}
+                          <p className="mt-1.5 flex-1 text-xs leading-5 text-[#c9daf2]">{match.whyMatched}</p>
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            <button type="button" onClick={() => { setSelectedMatchId(match.recordId); setDetailId(match.recordId); }} className="rounded-lg border border-[#36a9ff]/40 bg-[#36a9ff]/15 px-3 py-1.5 text-[11px] font-semibold text-[#9bd3ff] hover:border-[#36a9ff]">
+                              View Alignment Details
                             </button>
-                            <Link
-                              href={`/investigations/${encodeURIComponent(match.recordId)}`}
-                              className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-1.5 font-mono text-[10.5px] font-semibold text-[#7bc5ff] hover:border-[#36a9ff]"
-                            >
-                              Record Detail
-                            </Link>
-                            <Link
-                              href={`/compare?ids=${encodeURIComponent(match.recordId)}`}
-                              onClick={() => setCompareIds([match.recordId])}
-                              className="inline-flex items-center gap-1 rounded-xl border border-[#ff8a32]/35 bg-[#ff5500]/10 px-3 py-1.5 font-mono text-[10.5px] font-semibold text-[#ffb067] hover:border-[#ff8a32]"
-                            >
+                            <Link href={`/compare?ids=${encodeURIComponent(match.recordId)}`} onClick={() => setCompareIds([match.recordId])} className="inline-flex items-center gap-1 rounded-lg border border-[#ff8a32]/35 bg-[#ff5500]/10 px-3 py-1.5 text-[11px] font-semibold text-[#ffb067] hover:border-[#ff8a32]">
                               <GitCompareArrows size={12} aria-hidden="true" /> Compare
                             </Link>
                           </div>
-                        </div>
-
-                        {/* Parameter Bridge Table */}
-                        <div className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-[#050d21]/80">
-                          <table className="w-full min-w-[540px] text-left text-xs">
-                            <thead>
-                              <tr className="border-b border-white/10 font-mono text-[10px] tracking-wider text-[#7d95b8] uppercase">
-                                <th className="px-3.5 py-2.5">Parameter</th>
-                                <th className="px-3.5 py-2.5">Scenario Assumption</th>
-                                <th className="px-3.5 py-2.5">Indexed Record Evidence</th>
-                                <th className="px-3.5 py-2.5">Alignment</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/10">
-                              {match.parameters.map((p) => (
-                                <tr key={p.key} className="align-top">
-                                  <td className="px-3.5 py-2.5 font-semibold text-[#e5efff]">{p.label}</td>
-                                  <td className="px-3.5 py-2.5 font-mono text-[11px] text-[#9cb2d2]">
-                                    {p.scenarioAssumption}
-                                  </td>
-                                  <td className="px-3.5 py-2.5 font-mono text-[11px] text-[#f4f8ff]">
-                                    {p.recordEvidence}
-                                    <span className="mt-0.5 block font-sans text-[11px] text-[#7d95b8]">
-                                      {p.explanation}
-                                    </span>
-                                  </td>
-                                  <td className="px-3.5 py-2.5">
-                                    <span
-                                      className={`inline-block rounded-full border px-2 py-0.5 font-mono text-[9.5px] font-bold ${
-                                        ALIGN_BADGES[p.status]
-                                      }`}
-                                    >
-                                      {p.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* What Evidence Cannot Establish */}
-                        <div className="mt-3.5 rounded-xl border border-rose-400/25 bg-rose-500/[0.07] p-3">
-                          <p className="font-mono text-[10px] font-bold tracking-[.14em] text-rose-200 uppercase">
-                            WHAT THIS EVIDENCE CANNOT ESTABLISH
-                          </p>
-                          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs text-rose-100/90">
-                            {match.cannotEstablish.map((lim) => (
-                              <li key={lim}>{lim}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </section>
               )}
 
-              {/* Excluded / Unavailable Records Inspector */}
               {report.unavailableRecords.length > 0 && (
                 <Card className="border border-white/10 bg-[#09152e]/75 p-4 backdrop-blur-md">
-                  <button
-                    type="button"
-                    onClick={() => setShowUnavailable((v) => !v)}
-                    className="flex w-full items-center justify-between text-left font-mono text-[11px] font-semibold tracking-wider text-[#9cb2d2] uppercase hover:text-white"
-                  >
-                    <span>
-                      EXCLUDED INDEXED RECORDS ({report.unavailableRecords.length} classified UNAVAILABLE for this
-                      scenario)
-                    </span>
-                    <span>{showUnavailable ? "Hide" : "Inspect reasons"}</span>
+                  <button type="button" onClick={() => setShowUnavailable((v) => !v)} className="flex w-full items-center justify-between text-left text-xs font-semibold text-[#9cb2d2] hover:text-white">
+                    <span>Excluded investigations ({report.unavailableRecords.length} with no alignment to this scenario)</span>
+                    <span>{showUnavailable ? "Hide" : "Show reasons"}</span>
                   </button>
                   {showUnavailable && (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                       {report.unavailableRecords.map((u) => (
                         <div key={u.id} className="rounded-lg border border-white/10 bg-[#050d21]/80 p-3 text-xs">
-                          <Link
-                            href={`/investigations/${encodeURIComponent(u.id)}`}
-                            className="font-mono font-bold text-[#7bc5ff] hover:underline"
-                          >
-                            {u.id} — {u.name}
-                          </Link>
+                          <Link href={`/investigations/${encodeURIComponent(u.id)}`} className="font-bold text-[#7bc5ff] hover:underline">{u.id} — {u.name}</Link>
                           <p className="mt-1 text-[11px] text-[#8ea5c7]">{u.reason}</p>
                         </div>
                       ))}
@@ -869,9 +729,50 @@ export function MissionLabView({ records, isAiConfigured, initialHabitat }: Miss
                 </Card>
               )}
             </div>
-          </div>
+          )}
         </div>
       </main>
+
+      {detail && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Alignment details for ${detail.recordId}`} onClick={() => setDetailId(null)} data-testid="alignment-drawer">
+          <div className="h-full w-full max-w-3xl overflow-y-auto border-l border-white/10 bg-[#07122a] p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-xs font-bold text-[#ff8a32]">{detail.recordId}{detail.family ? ` · ${detail.family}` : ""}</p>
+                <h2 className="mt-1 text-lg font-extrabold text-[#f4f8ff]">{detail.recordName}</h2>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold ${CLASSIFICATION_STYLES[detail.classification]}`}>{detail.classification.replace("_", " ")}</span>
+                  {!detail.isVerified && <span className="rounded-full border border-amber-400/35 bg-amber-400/10 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-amber-200">{detail.provenanceLabel}</span>}
+                </div>
+              </div>
+              <button type="button" onClick={() => setDetailId(null)} aria-label="Close" className="rounded-lg border border-white/15 p-2 text-[#c4d7f2] hover:border-[#36a9ff]"><X size={16} /></button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[#c9daf2]">{detail.whyMatched}</p>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-[#050d21]/80">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 text-[11px] font-semibold text-[#8ea5c7]">
+                    <th className="px-3 py-2.5">Parameter</th><th className="px-3 py-2.5">Your Scenario</th><th className="px-3 py-2.5">NASA Record</th><th className="px-3 py-2.5">Alignment</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {detail.parameters.map((p) => (
+                    <tr key={p.key} className="align-top">
+                      <td className="px-3 py-2.5 font-semibold text-[#e5efff]">{p.label}</td>
+                      <td className="px-3 py-2.5 text-[#9cb2d2]">{p.scenarioAssumption}</td>
+                      <td className="px-3 py-2.5 text-[#f4f8ff]">{p.recordEvidence}<span className="mt-0.5 block text-[11px] text-[#7d95b8]">{p.explanation}</span></td>
+                      <td className="px-3 py-2.5"><span className={`inline-block rounded-full border px-2 py-0.5 font-mono text-[9.5px] font-bold ${ALIGN_BADGES[p.status]}`}>{p.status.replace(/_/g, " ")}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={`/investigations/${encodeURIComponent(detail.recordId)}`} className="rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-[#7bc5ff] hover:border-[#36a9ff]">Open investigation <ArrowRight size={12} className="ml-1 inline" aria-hidden="true" /></Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CitationEvidenceDrawer citation={activeCitation} onClose={() => setActiveCitation(null)} />
     </div>

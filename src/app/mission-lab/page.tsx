@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { MissionLabView } from "@/components/mission/mission-lab-view";
 import { isOpenAiConfigured } from "@/lib/assistant/assistant-provider";
-import { investigationRepository } from "@/lib/data/repository";
-
-export const dynamic = "force-dynamic";
+import { getDatasetSource, listSummaries } from "@/lib/data/repository";
 
 export const metadata: Metadata = {
   title: "Mission Lab | OrbitFlame",
@@ -13,14 +11,17 @@ export const metadata: Metadata = {
 export default async function MissionLabPage({
   searchParams,
 }: {
-  searchParams: Promise<{ habitat?: string }>;
+  searchParams: Promise<{ habitat?: string; tab?: string }>;
 }) {
-  const [records, params] = await Promise.all([investigationRepository.list(), searchParams]);
+  const [records, params] = await Promise.all([listSummaries(), searchParams]);
+  const dataSource = await getDatasetSource();
   return (
     <MissionLabView
       records={records}
       isAiConfigured={isOpenAiConfigured()}
       initialHabitat={params.habitat?.toUpperCase()}
+      initialTab={params.tab}
+      dataSource={dataSource}
     />
   );
 }

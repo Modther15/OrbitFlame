@@ -46,7 +46,12 @@
   }
 
   button:focus-visible,
-  a:focus-visible {
+  a:focus-visible,
+  summary:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  [role="tab"]:focus-visible {
     outline: 2px solid var(--flame-orange);
     outline-offset: 3px;
   }
@@ -65,8 +70,6 @@
   border: 1px solid rgba(54, 169, 255, 0.18);
   border-radius: var(--radius-panel);
   background: rgba(11, 23, 48, 0.78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 20px 50px -36px rgb(5 11 27 / 70%);
 }
 
@@ -84,22 +87,16 @@
 .cosmic-transit-overlay {
   opacity: 0;
   background: radial-gradient(circle at 50% 50%, rgba(54, 169, 255, 0.14) 0%, rgba(11, 23, 48, 0.42) 55%, rgba(4, 9, 22, 0.88) 100%);
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 260ms ease;
+  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 
 body.cosmic-warp-forward .cosmic-transit-overlay {
   opacity: 1;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 body.cosmic-warp-reverse .cosmic-transit-overlay {
   opacity: 1;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 /* Homepage Warp reaction on forward transition to Explore */
@@ -211,3 +208,24 @@ body.cosmic-warp-reverse .explore-space-bg {
     transition: none !important;
   }
 }
+
+/* ---- Investigation test-run list (compact markup keeps /investigations/* HTML small; same look as the former Tailwind cards) ---- */
+.run-row { display: flex; flex-direction: column; justify-content: space-between; gap: 1rem; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 0.75rem; background: rgb(6 14 34 / 0.75); padding: 1.1rem 1.25rem; transition: border-color 0.2s; }
+.run-row:hover { border-color: rgb(54 169 255 / 0.35); }
+@media (min-width: 640px) { .run-row { flex-direction: row; align-items: center; } }
+.run-id { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; color: #ff8a32; overflow-wrap: anywhere; }
+.run-key { font-size: 0.6875rem; font-weight: 400; letter-spacing: 0; color: #8ea5c7; }
+.run-title { margin-top: 0.4rem; font-size: 1rem; font-weight: 700; color: #f4f8ff; }
+.run-variant { margin-top: 0.25rem; font-size: 0.75rem; color: #9cb2d2; }
+.run-meta { margin-top: 0.6rem; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.6875rem; color: #7d95b8; }
+.rc { display: inline-flex; gap: 0.35rem; align-items: center; border: 1px solid rgb(255 255 255 / 0.1); border-radius: 0.5rem; background: rgb(255 255 255 / 0.04); padding: 0.2rem 0.6rem; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.6875rem; font-weight: 600; color: #e6effc; }
+.rc-miss { border-color: rgb(251 191 36 / 0.25); background: rgb(251 191 36 / 0.1); color: #fcd34d; }
+.rc-k { font-weight: 400; color: #8ea5c7; }
+.run-inspect { display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.5rem; min-height: 2.5rem; border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #fff !important; background: linear-gradient(110deg, #0a1b3a 0%, #174585 45%, #2563eb 72%, #ff5500 100%); background-size: 240% 100%; background-position: 0% 50%; box-shadow: 0 8px 22px -10px rgb(37 99 235 / 0.45); transition: all 0.5s cubic-bezier(0.2, 0.75, 0.2, 1); cursor: pointer; }
+.run-inspect:hover { transform: translateY(-2px); background-position: 100% 50%; box-shadow: 0 14px 28px -10px rgb(255 85 0 / 0.5); }
+.run-search { display: flex; align-items: center; gap: 0.5rem; min-width: 16rem; flex: 1 1 18rem; max-width: 28rem; border: 1px solid rgb(255 255 255 / 0.12); border-radius: 0.6rem; background: rgb(6 14 34 / 0.7); padding: 0.4rem 0.75rem; color: #8ea5c7; }
+.run-search input { width: 100%; background: transparent; outline: none; font-size: 0.8rem; color: #f4f8ff; }
+.run-search:focus-within { border-color: rgb(54 169 255 / 0.55); }
+.run-pg { display: inline-flex; height: 1.9rem; width: 1.9rem; align-items: center; justify-content: center; border: 1px solid rgb(255 255 255 / 0.15); border-radius: 9999px; background: rgb(255 255 255 / 0.05); color: #c4d7f2; cursor: pointer; }
+.run-pg:disabled { opacity: 0.35; cursor: default; }
+.run-pg:not(:disabled):hover { border-color: rgb(54 169 255 / 0.5); }

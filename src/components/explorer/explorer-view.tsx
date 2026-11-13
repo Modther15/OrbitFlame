@@ -1,14 +1,30 @@
 "use client";
 
-import { ArrowUpRight, Filter, GitCompareArrows, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpRight, Filter, GitCompareArrows, Search, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
+import { forcedFlowLabel, shortenHardware, shortFuels } from "@/lib/science/hardware-label";
+import { Connections, GravityLadder, HardwareMap } from "@/components/science/science-context";
+import type { InvestigationSummary } from "@/lib/data/summary";
+import type { VarDigest } from "@/lib/data/variables";
 import { useCompareSelection } from "@/lib/state/compare-selection";
+
+const PILLAR_BLURB: Record<string, string> = {
+  PREVENTION: "Ignition & flammability limits of solids, gases, and flames",
+  DETECTION: "Smoke & aerosol generation, aging, and particle counting",
+  SUPPRESSION: "Droplet and flame extinction with O2, CO2, and He dilution",
+};
+
+const PILLAR_NAME: Record<string, string> = { PREVENTION: "Prevention", DETECTION: "Detection", SUPPRESSION: "Suppression" };
+
+const METADATA_ONLY_NOTE: Record<string, string> = {
+  "PSI-60": "Ground analysis of SPICE images; no experimental table in PSI.",
+  "PSI-115": "Numerical simulation of smoke growth (0 g vs 1 g); no experimental table in PSI.",
+  "PSI-142": "Ground / simulation study; PSI holds only a data index of publication figures (8 rows), no per-test rows.",
+};
 
 const GRAVITY_ORDER: Record<string, number> = {
   microgravity: 0,
@@ -24,12 +40,83 @@ function gravityRank(value: string): number {
   return 99;
 }
 
-export function ExplorerView({ records, initialFamily = "" }: { records: DemoInvestigation[]; initialFamily?: string }) {
+const PILL = "inline-flex items-center rounded-full border border-white/20 bg-white/[0.07] px-2.5 py-1 text-xs font-medium text-[#e6effc]";
+
+const ExplorerCard = memo(function ExplorerCard({ record, isCompared, onToggle, digest }: { record: InvestigationSummary; isCompared: boolean; onToggle: (id: string) => void; digest?: VarDigest }) {
+  const metaOnly = record.rowStatus === "metadata_only";
+  const hw = shortenHardware(record.hardware, record.flightProgram);
+  const flow = forcedFlowLabel(record.conditionRanges?.airflowCmS);
+  const pillars = record.safetyDomains.map((d) => PILLAR_NAME[d] ?? d).join(", ");
+  return (
+    <Card
+        className="explore-card-item border border-white/10 bg-[#09152e]/80 p-6 transition-all hover:border-[#36a9ff]/40 hover:bg-[#0b1b3b]/85 hover:shadow-[0_16px_36px_-12px_rgba(54,169,255,0.18)]"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="font-mono text-[11px] font-semibold tracking-[.16em] text-[#ff8a32]">
+            {`${record.id} // ${record.family}`}
+          </span>
+          <h2 className="mt-1.5 text-xl font-bold tracking-tight text-[#f4f8ff]">{record.name}</h2>
+        </div>
+        {flow && <span className="rounded-full border border-[#36a9ff]/25 bg-[#36a9ff]/[0.08] px-2.5 py-1 text-[11px] text-[#9cc9f2]">{flow}</span>}
+      </div>
+      <p className="mt-2 text-sm text-[#9cb2d2]">{record.conditions.gravity}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {pillars && <span className={PILL}>{pillars}</span>}
+        {record.fuelMaterial && <span className={PILL} title={record.fuelMaterial}>{shortFuels(record.fuelMaterial)}</span>}
+        {hw && <span className={PILL} title={record.hardware ?? undefined}>{hw}</span>}
+      </div>
+      {metaOnly && <p className="mt-2 text-xs text-[#9cb2d2]">{METADATA_ONLY_NOTE[record.id] ?? "No experimental table in the ingested PSI files."}</p>}
+      {digest && (digest.varied.length > 0 || digest.controlled.length > 0) && (
+        <details className="group mt-3">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[#d8e6fa] hover:border-[#36a9ff]/40 hover:text-white [&::-webkit-details-marker]:hidden">
+            <span className="transition-transform group-open:rotate-90" aria-hidden="true">▸</span> View Test Conditions &amp; Measured Variables
+          </summary>
+          <div className="mt-2 rounded-lg border border-white/10 bg-[#060e22]/60 px-3 py-2 text-xs">
+            <p><span className="font-semibold text-[#7bc5ff]">Held constant: </span><span className="text-[#c2d5ee]">{digest.controlled.join("; ") || "none"}</span></p>
+            <p className="mt-1"><span className="font-semibold text-[#ff8a32]">Varied: </span><span className="text-[#c2d5ee]">{digest.varied.join("; ") || "none"}</span></p>
+            <p className="mt-1"><span className="font-semibold text-emerald-300">Measured: </span><span className="text-[#c2d5ee]">{digest.measured.join("; ") || "none"}</span></p>
+            {digest.diagnostics.length > 0 && (
+              <p className="mt-1 text-[#8ea5c7]" data-testid="explore-diagnostics"><span className="font-semibold">Imaging settings: </span>{digest.diagnostics.join("; ")}</p>
+            )}
+          </div>
+        </details>
+      )}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+        <span className="text-sm font-medium text-[#9cb2d2]">
+          {record.testRunCount === 0 || metaOnly ? "Metadata Only" : `${record.testRunCount.toLocaleString("en-US")} Test Run${record.testRunCount === 1 ? "" : "s"}`}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onToggle(record.id)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tracking-wider uppercase transition-colors ${
+              isCompared
+                ? "border-transparent bg-[linear-gradient(135deg,#ff5500,#f59e0b)] !text-white"
+                : "border-white/15 bg-white/[0.05] text-[#d8e6fa] hover:border-[#ff5500]/50 hover:bg-white/[0.1] hover:text-white"
+            }`}
+          >
+            <GitCompareArrows size={13} /> {isCompared ? "Comparing" : "Compare"}
+          </button>
+          <Link
+            href={`/investigations/${record.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(110deg,#0a1b3a_0%,#174585_45%,#2563eb_72%,#ff5500_100%)] px-4 py-2 text-xs font-semibold tracking-wider !text-white uppercase"
+          >
+            Open Details <ArrowUpRight size={13} />
+          </Link>
+        </div>
+      </div>
+    </Card>
+  );
+});
+
+export function ExplorerView({ records, initialFamily = "", digests = {} }: { records: InvestigationSummary[]; initialFamily?: string; digests?: Record<string, VarDigest> }) {
+  const isBenchmark = records.some((r) => r.provenanceStatus === "NASA_VERIFIED_DATA");
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState(initialFamily);
   const [domain, setDomain] = useState("");
   const [gravity, setGravity] = useState("");
-  const [showFilters, setShowFilters] = useState(true);
+  const showFilters = true;
   const [sort, setSort] = useState("name-asc");
   const { selectedIds, toggleId, clearIds } = useCompareSelection();
 
@@ -82,9 +169,10 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
 
   const comparedRecords = useMemo(() => records.filter((r) => selectedIds.includes(r.id)), [records, selectedIds]);
 
-  function toggleCompare(id: string) {
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const toggleCompare = useCallback((id: string) => {
     toggleId(id);
-  }
+  }, [toggleId]);
 
   function clearOnlyFilters() {
     setFamily("");
@@ -108,7 +196,7 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
         <header className="explore-header mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>
             <span className="inline-block rounded-full border border-[#36a9ff]/25 bg-[linear-gradient(90deg,rgba(54,169,255,0.12),rgba(255,138,50,0.1))] px-3 py-1 font-mono text-[10px] font-semibold tracking-[.2em] text-[#52b6ff]">
-              [ 01 // RESEARCH CATALOGUE ]
+              MICROGRAVITY COMBUSTION &amp; FIRE SAFETY INTELLIGENCE
             </span>
             <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-[#f4f8ff] sm:text-4xl">
               EXPLORE{" "}
@@ -117,7 +205,6 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
               </span>
             </h1>
           </div>
-          <StatusBadge status="demo" />
         </header>
 
         <div className="explore-controls flex flex-wrap gap-3">
@@ -141,19 +228,6 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
               </button>
             )}
           </label>
-          <button
-            type="button"
-            onClick={() => setShowFilters((value) => !value)}
-            aria-expanded={showFilters}
-            className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-white/12 bg-[#09152e]/80 px-4 text-xs font-semibold tracking-wider text-[#e6effc] uppercase shadow-xs backdrop-blur-md transition-colors hover:border-[#36a9ff]/40 hover:bg-[#0c1d3e]"
-          >
-            <SlidersHorizontal size={15} className="text-[#ff8a32]" /> Filters{" "}
-            {activeFilters > 0 && (
-              <span className="rounded-full bg-[linear-gradient(135deg,#0b3d91,#ff5500)] px-2 py-0.5 font-mono text-[10px] text-white">
-                {activeFilters}
-              </span>
-            )}
-          </button>
         </div>
 
         {comparedRecords.length > 0 && (
@@ -162,7 +236,7 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
               <div className="flex items-center gap-2.5">
                 <GitCompareArrows size={18} className="text-[#ff8a32]" />
                 <span className="font-mono text-xs tracking-[.16em] text-[#ffb067] uppercase">
-                  {`COMPARE MATRIX // ${comparedRecords.length} OF 3 SELECTED`}
+                  {`COMPARE MATRIX // ${comparedRecords.length} OF 4 SELECTED`}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -278,9 +352,6 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
                   ))}
                 </select>
               </label>
-              <p className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs leading-5 text-amber-200">
-                Fictional fixture values for interface testing only. Missing parameters are never coerced to zero.
-              </p>
               <button
                 type="button"
                 onClick={clearFilters}
@@ -292,9 +363,31 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
           )}
 
           <div>
+            <div data-testid="pillar-filter" className="mb-5 grid gap-3 md:grid-cols-3">
+              {(["PREVENTION", "DETECTION", "SUPPRESSION"] as const).map((d) => {
+                const n = records.filter((r) => r.safetyDomains.includes(d)).length;
+                const on = domain === d;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={on}
+                    data-testid={`pillar-${d.toLowerCase()}`}
+                    onClick={() => setDomain(on ? "" : d)}
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${on ? "border-[#ff8a32]/70 bg-[#ff5500]/15 shadow-[inset_0_0_0_1px_rgba(255,138,50,0.35)]" : "border-white/10 bg-[#09152e]/70 hover:border-[#36a9ff]/40"}`}
+                  >
+                    <span className="flex items-center justify-between text-sm font-bold tracking-wide text-[#ffb067]">
+                      <span>{PILLAR_NAME[d].toUpperCase()} ({n})</span>
+                      {on && <X size={14} aria-label="Clear filter" />}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[#b5c9e8]">{PILLAR_BLURB[d]}</span>
+                  </button>
+                );
+              })}
+            </div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-xs tracking-wider text-[#8ea5c7] uppercase" aria-live="polite">
-                {`${filteredRecords.length} FICTIONAL DEMO ${filteredRecords.length === 1 ? "RECORD" : "RECORDS"}`}
+              <p className="text-base font-semibold text-[#e6effc]" aria-live="polite">
+                {`${filteredRecords.length} ${isBenchmark ? "" : "Demo "}${filteredRecords.length === 1 ? "Investigation" : "Investigations"}`}
               </p>
               <label className="flex items-center gap-2 font-mono text-[11px] text-[#8ea5c7] uppercase">
                 Sort
@@ -312,60 +405,16 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
 
             {filteredRecords.length ? (
               <div className="grid gap-4">
-                {filteredRecords.map((record) => {
-                  const isCompared = selectedIds.includes(record.id);
-                  return (
-                    <Card
-                      key={record.id}
-                      className="explore-card-item border border-white/10 bg-[#09152e]/80 p-6 backdrop-blur-md transition-all hover:border-[#36a9ff]/40 hover:bg-[#0b1b3b]/85 hover:shadow-[0_16px_36px_-12px_rgba(54,169,255,0.18)]"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <span className="font-mono text-[11px] font-semibold tracking-[.16em] text-[#ff8a32]">
-                            {`${record.id} // ${record.family}`}
-                          </span>
-                          <h2 className="mt-1.5 text-xl font-bold tracking-tight text-[#f4f8ff]">{record.name}</h2>
-                        </div>
-                        <StatusBadge status="demo" />
-                      </div>
-                      <p className="mt-2.5 text-sm text-[#9cb2d2]">
-                        {record.fuelMaterial} · {record.conditions.gravity} ·{" "}
-                        <span className="font-semibold text-[#52b6ff]">{record.safetyDomains.join(", ")}</span>
-                      </p>
-                      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
-                        <span className="font-mono text-[11px] tracking-wider text-[#7d95b8] uppercase">
-                          {`Completeness ${record.dataCompleteness}% · ${record.testRuns.length} illustrative run`}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleCompare(record.id)}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tracking-wider uppercase transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] ${
-                              isCompared
-                                ? "border-transparent bg-[linear-gradient(135deg,#ff5500,#f59e0b)] !text-white shadow-[0_10px_22px_-8px_rgba(255,85,0,0.5)]"
-                                : "border-white/15 bg-white/[0.05] text-[#d8e6fa] hover:-translate-y-0.5 hover:border-[#ff5500]/50 hover:bg-white/[0.1] hover:text-white"
-                            }`}
-                          >
-                            <GitCompareArrows size={13} /> {isCompared ? "Comparing" : "Compare"}
-                          </button>
-                          <Link
-                            href={`/investigations/${record.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(110deg,#0a1b3a_0%,#174585_45%,#2563eb_72%,#ff5500_100%)] bg-[length:240%_100%] bg-[position:0%_50%] px-4 py-2 text-xs font-semibold tracking-wider !text-white uppercase shadow-[0_8px_22px_-10px_rgba(37,99,235,0.45)] transition-all duration-500 ease-[cubic-bezier(0.2,0.75,0.2,1)] hover:-translate-y-0.5 hover:bg-[position:100%_50%] hover:shadow-[0_14px_28px_-10px_rgba(255,85,0,0.5)]"
-                          >
-                            Open details <ArrowUpRight size={13} />
-                          </Link>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
+                {filteredRecords.map((record) => (
+                  <ExplorerCard key={record.id} record={record} isCompared={selectedSet.has(record.id)} onToggle={toggleCompare} digest={digests[record.id]} />
+                ))}
               </div>
             ) : (
               <Card className="flex min-h-[280px] flex-col items-center justify-center border border-white/10 bg-[#09152e]/80 p-8 text-center backdrop-blur-md">
                 <span className="inline-block rounded-full border border-[#ff8a32]/30 bg-[#ff8a32]/10 px-3 py-1 font-mono text-[10px] font-semibold tracking-[.16em] text-[#ffb067] uppercase">
                   0 MATCHES FOUND
                 </span>
-                <h2 className="mt-3 text-xl font-bold text-[#f4f8ff]">No matching demo records</h2>
+                <h2 className="mt-3 text-xl font-bold text-[#f4f8ff]">No matching records</h2>
                 <p className="mt-2 max-w-md text-sm text-[#8ea5c7]">
                   {query && activeFilters > 0
                     ? `No investigations match "${query.trim()}" with the ${activeFilters} active filter${activeFilters === 1 ? "" : "s"}.`
@@ -406,7 +455,15 @@ export function ExplorerView({ records, initialFamily = "" }: { records: DemoInv
             )}
           </div>
         </div>
+
+        <section className="mt-10 space-y-5" aria-label="Science context">
+          <p className="font-mono text-[10.5px] font-bold tracking-[.18em] text-[#52b6ff]">[ SCIENCE CONTEXT // FROM THE PSI INVESTIGATION RECORDS ]</p>
+          <HardwareMap />
+          <GravityLadder records={records} />
+          <Connections />
+        </section>
       </main>
     </div>
   );
 }
+

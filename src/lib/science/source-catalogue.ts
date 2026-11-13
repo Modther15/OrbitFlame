@@ -1,9 +1,10 @@
-import type { DemoInvestigation, ProvenanceStatus, SourceLocator } from "@/lib/api/schemas";
+import type { ProvenanceStatus, SourceLocator } from "@/lib/api/schemas";
 import {
   deriveDatasetScope,
   formatProvenanceTag,
   isRecordVerified,
   type DatasetScopeSummary,
+  type ScopeRecord,
 } from "@/lib/science/provenance";
 
 export type SourceCatalogueEntry = {
@@ -35,13 +36,13 @@ export const NASA_SOURCE_PRIORITY_TIERS: readonly SourcePriorityTier[] = [
     rank: 1,
     name: "NASA Physical Sciences Informatics (PSI)",
     description: "Primary microgravity combustion investigation records, test matrices, and flight telemetry tables.",
-    labelingRule: "Eligible for NASA_VERIFIED_DATA once primary SourceLocator is verified.",
+    labelingRule: "Used as verified data once the source file is located.",
   },
   {
     rank: 2,
     name: "NASA Technical Reports Server (NTRS)",
     description: "Authoritative NASA technical memorandums, facility descriptions, and peer-reviewed contractor reports.",
-    labelingRule: "Must store document title, URL, page number, and table/section locator.",
+    labelingRule: "Cited with document title, URL, page and table.",
   },
   {
     rank: 3,
@@ -57,8 +58,8 @@ export const NASA_SOURCE_PRIORITY_TIERS: readonly SourcePriorityTier[] = [
   },
   {
     rank: 5,
-    name: "Third-Party Commentary / Product Demo Fixtures",
-    description: "Supplementary UI fixtures or non-NASA datasets used strictly for interface validation.",
+    name: "Third-Party Commentary / Non-NASA Datasets",
+    description: "Supplementary commentary or non-NASA datasets. None are used in this index.",
     labelingRule: "Must carry explicit non-NASA provenance banners; NEVER relabeled as verified NASA measurements.",
   },
 ];
@@ -74,7 +75,7 @@ function formatSourceLocator(source: SourceLocator | null): string {
   return parts.length > 0 ? parts.join(" · ") : "SOURCE LOCATOR NOT AVAILABLE";
 }
 
-export function buildSourceCatalogue(records: DemoInvestigation[]): {
+export function buildSourceCatalogue(records: ScopeRecord[]): {
   datasetScope: DatasetScopeSummary;
   entries: SourceCatalogueEntry[];
   verifiedSourceCount: number;
@@ -89,7 +90,7 @@ export function buildSourceCatalogue(records: DemoInvestigation[]): {
       investigationId: rec.id,
       investigationName: rec.name,
       family: rec.family,
-      sourceTitle: src?.sourceTitle ?? "NO CONNECTED SOURCE DOCUMENT (DEMO FIXTURE)",
+      sourceTitle: src?.sourceTitle ?? "NO CONNECTED SOURCE DOCUMENT",
       documentType: src ? "Indexed Technical Source" : "NOT REPORTED / UNCONNECTED",
       publicationDate: "NOT REPORTED",
       locatorDisplay: formatSourceLocator(src),

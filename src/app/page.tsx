@@ -10,13 +10,15 @@ import { investigationRepository } from "@/lib/data/repository";
 import { DEMO_WARNING } from "@/lib/demo/dataset";
 import "./landing.css";
 
+export const dynamic = "force-dynamic";
+
 // Program descriptions are general public context, not extracted findings.
 const FAMILY_META: Omit<FamilyCard, "records">[] = [
-  { key: "BASS", name: "BASS", full: "Burning and Suppression of Solids", description: "How solid materials ignite, spread flame and extinguish in low-speed flow aboard the ISS.", phase: "Solid", domain: "Prevention", platform: "ISS" },
+  { key: "BASS", name: "BASS", full: "Burning and Suppression of Solids", description: "How solid materials ignite, spread flame and extinguish in low-speed flow aboard the ISS.", phase: "Solid", domain: "Prevention", platform: "ISS · MSG" },
   { key: "SAFFIRE", name: "Saffire", full: "Spacecraft Fire Safety Experiment", description: "Large-scale material burns inside uncrewed Cygnus cargo vehicles after they leave the station.", phase: "Solid", domain: "Prevention", platform: "Cygnus vehicle" },
-  { key: "FLEX", name: "FLEX", full: "Flame Extinguishment Experiment", description: "Burning fuel droplets in microgravity, and the conditions under which those flames go out.", phase: "Liquid", domain: "Suppression", platform: "ISS" },
-  { key: "ACME", name: "ACME", full: "Advanced Combustion via Microgravity Experiments", description: "A set of gaseous-flame studies run in the station's combustion facility.", phase: "Gas", domain: "Prevention", platform: "ISS" },
-  { key: "SAME", name: "SAME", full: "Smoke Aerosol Measurement Experiment", description: "Smoke particle properties that spacecraft fire detectors depend on.", phase: "Aerosol", domain: "Detection", platform: "ISS" },
+  { key: "FLEX", name: "FLEX", full: "Flame Extinguishment Experiment", description: "Burning fuel droplets in microgravity, and the conditions under which those flames go out.", phase: "Liquid", domain: "Suppression", platform: "ISS · CIR + MDCA" },
+  { key: "ACME", name: "ACME", full: "Advanced Combustion via Microgravity Experiments", description: "A set of gaseous-flame studies run in the station's combustion facility.", phase: "Gas", domain: "Prevention", platform: "ISS · CIR + ACME (SPICE: MSG)" },
+  { key: "SAME", name: "SAME", full: "Smoke Aerosol Measurement Experiment", description: "Smoke particle properties that spacecraft fire detectors depend on.", phase: "Aerosol", domain: "Detection", platform: "ISS · MSG" },
 ];
 
 const SOURCES = ["NASA PSI Repository", "NASA Technical Reports Server", "NASA Task Book", "Peer-reviewed journals", "Space Apps resource package"];
@@ -34,8 +36,11 @@ function SectionHead({ code, top, bottom, text, align = "center" }: { code: stri
 export default async function HomePage() {
   const investigations = await investigationRepository.list();
   const families: FamilyCard[] = FAMILY_META.map((f) => ({ ...f, records: investigations.filter((r) => r.family === f.key).length }));
-  const verified = 0; // No NASA source package imported yet.
-  const documents = 0;
+  const isBenchmark = investigationRepository.mode === "backend" && investigations.some((r) => r.provenanceStatus === "NASA_VERIFIED_DATA");
+  const bannerLabel = DEMO_WARNING;
+  const testPoints = investigations.reduce((n, r) => n + r.testRuns.length, 0);
+  const verified = isBenchmark ? testPoints : 0; // rows parsed unmodified from NASA PSI files
+  const documents = isBenchmark ? new Set(investigations.flatMap((r) => r.testRuns.map((t) => (t.sourceRunKey ?? "").split(" · ")[0]).filter(Boolean))).size : 0; // distinct PSI data files that contribute rows
 
   return (
     <div className="lp">
@@ -45,11 +50,11 @@ export default async function HomePage() {
         <Hero />
 
         <section className="lp-stats" aria-label="Collection status" data-reveal>
-          <div><b>{String(investigations.length).padStart(2, "0")}</b><span className="lp-mono">Demo investigations</span></div>
+          <div><b>{String(investigations.length).padStart(2, "0")}</b><span className="lp-mono">{isBenchmark ? "PSI investigations" : "Demo investigations"}</span></div>
           <div><b>{String(families.length).padStart(2, "0")}</b><span className="lp-mono">Program families</span></div>
           <div><b>{String(documents).padStart(2, "0")}</b><span className="lp-mono">Source documents</span></div>
           <div><b>{String(verified).padStart(2, "0")}</b><span className="lp-mono">Verified evidence spans</span></div>
-          <p className="lp-mono">{DEMO_WARNING}</p>
+          <p className="lp-mono">{isBenchmark ? `${testPoints.toLocaleString("en-US")} real NASA test rows` : DEMO_WARNING}</p>
         </section>
 
         <section id="programs" className="lp-section">
@@ -87,7 +92,7 @@ export default async function HomePage() {
             <span className="lp-mono lp-code lp-code--light">[ 07 // START ]</span>
             <h2>ASK THE<br />EVIDENCE.</h2>
             <p>Start from a program, a material or a mission question. FLAME shows what is known — and says so when it isn&apos;t.</p>
-            <div className="lp-cta-meta lp-mono"><span><i /> {"AI assistant // demo mode"}</span><span>No fire-risk predictions</span></div>
+            <div className="lp-cta-meta lp-mono"><span><i /> {"AI assistant // evidence-only"}</span><span>No fire-risk predictions</span></div>
           </div>
           <form className="lp-cta-form" action="/explore" method="get">
             <label>
@@ -105,7 +110,9 @@ export default async function HomePage() {
       <footer className="lp-footer">
         <span className="lp-logo"><span className="lp-logo-mark" aria-hidden="true" /><span>Orbit<b>Flame</b></span></span>
         <span className="lp-mono">NASA Space Apps 2026 · Flame in Freefall · Cairo</span>
-        <span className="lp-mono">{DEMO_WARNING}</span>
+        {!isBenchmark && <span className="lp-mono">{bannerLabel}</span>}
+        <Link href="/mission-lab" className="lp-mono">Mission Lab ↗</Link>
+        <Link href="/assistant" className="lp-mono">AI Assistant ↗</Link>
         <Link href="/explore" className="lp-mono">Explorer ↗</Link>
       </footer>
     </div>

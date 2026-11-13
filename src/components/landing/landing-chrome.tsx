@@ -53,23 +53,20 @@ export function RevealController() {
     els.forEach((el) => io.observe(el));
 
     // Scroll-linked environment controller: updates --sp (0..1) and --sy (px) smoothly via rAF.
+    // Throttled, passive: one rAF per frame max, and the CSS variables only change when progress moves >= 0.25%
+    // (each change re-styles the fixed backdrop, which is costly without a GPU).
     let raf = 0;
-    let targetP = 0;
-    let currentP = 0;
+    let lastP = -1;
     const tick = () => {
+      raf = 0;
       const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      targetP = Math.min(1, Math.max(0, window.scrollY / max));
-      currentP += (targetP - currentP) * 0.18;
-      if (Math.abs(targetP - currentP) < 0.0005) currentP = targetP;
+      const p = Math.min(1, Math.max(0, window.scrollY / max));
+      if (Math.abs(p - lastP) < 0.0025 && p !== 0 && p !== 1) return;
+      lastP = p;
       const el = spaceRef.current;
       if (el) {
-        el.style.setProperty("--sp", currentP.toFixed(4));
-        el.style.setProperty("--sy", `${(currentP * 1000).toFixed(1)}px`);
-      }
-      if (currentP !== targetP) {
-        raf = window.requestAnimationFrame(tick);
-      } else {
-        raf = 0;
+        el.style.setProperty("--sp", p.toFixed(4));
+        el.style.setProperty("--sy", `${(p * 1000).toFixed(1)}px`);
       }
     };
     const onScroll = () => {
@@ -329,7 +326,7 @@ export function LandingNav() {
       </Link>
       <nav aria-label="Main navigation">{links()}</nav>
       <div className="lp-nav-right">
-        <span className="lp-mono lp-nav-demo"><i /> Demo mode</span>
+        <span className="lp-mono lp-nav-demo"><i /> Real NASA PSI data</span>
         <Link href="/explore" className="lp-btn lp-btn--dark lp-btn--sm">Explore <ArrowUpRight size={13} /></Link>
         <button
           type="button"
@@ -344,7 +341,7 @@ export function LandingNav() {
       </div>
       <nav id="lp-nav-sheet" className={`lp-nav-sheet${open ? " is-open" : ""}`} aria-label="Section menu" hidden={!open}>
         {links(() => setOpen(false))}
-        <span className="lp-mono lp-nav-sheet-note"><i /> {"Demo mode // fictional fixtures"}</span>
+        <span className="lp-mono lp-nav-sheet-note"><i /> {"Real NASA PSI data // not fixtures"}</span>
       </nav>
     </header>
   );

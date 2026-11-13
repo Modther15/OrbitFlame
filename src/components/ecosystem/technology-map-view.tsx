@@ -1,16 +1,17 @@
 "use client";
 
-import { ArrowRight, Compass, FlaskConical, GitCompareArrows, ShieldAlert } from "lucide-react";
+import { ArrowRight, Compass, FlaskConical, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ExploreSpaceBackground } from "@/components/explorer/explore-space-background";
 import { Sidebar } from "@/components/navigation/sidebar";
+import { EarthApplications, HardwareMap } from "@/components/science/science-context";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
-import type { DemoInvestigation } from "@/lib/api/schemas";
+import { CoverageGapsPanel, type ProxyNote } from "@/components/gaps/coverage-gaps-panel";
+import type { EvidenceGapRadarReport } from "@/lib/science/evidence-gaps";
 import {
-  buildTechnologyMap,
   type TechDomainKey,
+  type TechnologyMapReport,
   type TechMapRecordNode,
 } from "@/lib/science/technology-map";
 import { setCompareIds } from "@/lib/state/compare-selection";
@@ -21,8 +22,20 @@ const DOMAIN_COLORS: Record<TechDomainKey, { stroke: string; badge: string }> = 
   SUPPRESSION: { stroke: "#34d399", badge: "border-emerald-400/40 bg-emerald-500/15 text-emerald-200" },
 };
 
-export function TechnologyMapView({ records }: { records: DemoInvestigation[] }) {
-  const report = useMemo(() => buildTechnologyMap(records), [records]);
+type MapTab = "jobs" | "gaps";
+
+export function TechnologyMapView({
+  report,
+  radar,
+  proxyNotes = [],
+  initialTab = "jobs",
+}: {
+  report: TechnologyMapReport;
+  radar: EvidenceGapRadarReport;
+  proxyNotes?: ProxyNote[];
+  initialTab?: MapTab;
+}) {
+  const [tab, setTab] = useState<MapTab>(initialTab);
   const [activeDomain, setActiveDomain] = useState<TechDomainKey>("PREVENTION");
   const [selectedRecordId, setSelectedRecordId] = useState<string>(report.allNodes[0]?.id ?? "");
 
@@ -32,17 +45,12 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
   const activeNode: TechMapRecordNode | null =
     report.allNodes.find((n) => n.id === selectedRecordId) ?? currentCluster.records[0] ?? null;
 
-  const scopeBadgeStatus =
-    report.datasetScope.scope === "VERIFIED_INDEXED_DATA"
-      ? "verified"
-      : report.datasetScope.scope === "EMPTY"
-        ? "empty"
-        : "demo";
-
+  // Tall enough that the longest list of experiments never overlaps; the viewBox keeps the same height for every pillar.
+  const svgH = Math.max(340, Math.max(1, ...report.clusters.map((c) => c.records.length)) * 44 + 40);
   const domainY: Record<TechDomainKey, number> = {
-    PREVENTION: 66,
-    DETECTION: 170,
-    SUPPRESSION: 274,
+    PREVENTION: (svgH * 66) / 340,
+    DETECTION: svgH / 2,
+    SUPPRESSION: (svgH * 274) / 340,
   };
 
   return (
@@ -53,44 +61,57 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
       <main className="explore-main-stage relative z-10 min-w-0 px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
         <div className="mx-auto max-w-[1220px] space-y-6">
           <Card className="border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md sm:p-7">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#52b6ff] uppercase">
-                  RESEARCH ECOSYSTEM // METADATA RELATIONSHIP MAP
-                </p>
-                <h1 className="mt-1.5 flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-[#f4f8ff] sm:text-3xl">
-                  <FlaskConical size={26} className="text-[#36a9ff]" aria-hidden="true" />
-                  Fire-Safety Technology Map
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#9cb2d2]">
-                  Explore the relationships between indexed research domains, technologies, investigations, and recorded
-                  experimental equipment.
-                </p>
-              </div>
-              <div className="flex flex-col items-start gap-2 lg:items-end">
-                <StatusBadge status={scopeBadgeStatus} />
-                <span className="font-mono text-[11px] text-[#8ea5c7]">
-                  {report.datasetScope.activeDatasetBanner}
-                </span>
-              </div>
-            </div>
-
-            <div
-              data-testid="tech-map-noncausal-banner"
-              className="mt-5 flex items-start gap-3 rounded-xl border border-amber-400/35 bg-amber-400/10 p-3.5 text-xs leading-5 text-amber-100"
-            >
-              <ShieldAlert size={17} className="mt-0.5 shrink-0 text-amber-300" aria-hidden="true" />
-              <p className="font-medium text-[#fbe6b5]">{report.nonCausalNotice}</p>
+            <p className="font-mono text-[10px] font-semibold tracking-[.18em] text-[#52b6ff] uppercase">
+              Which experiments cover which fire-safety job, and what is still missing?
+            </p>
+            <h1 className="mt-1.5 flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-[#f4f8ff] sm:text-3xl">
+              <FlaskConical size={26} className="text-[#36a9ff]" aria-hidden="true" />
+              Fire-Safety Technology Map
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#c2d5ee]">
+              Browse the {report.allNodes.length} indexed NASA investigations by the fire-safety job they serve, then see which gravity levels have been tested and which are still empty.
+            </p>
+            <div role="tablist" aria-label="Technology map views" className="mt-5 inline-flex max-w-full flex-wrap gap-1.5 rounded-2xl border border-white/10 bg-[#060e22]/80 p-1.5">
+              {([
+                ["jobs", "Experiments by job"],
+                ["gaps", "Coverage gaps"],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  id={`techtab-${id}`}
+                  role="tab"
+                  type="button"
+                  aria-selected={tab === id}
+                  aria-controls={`techpanel-${id}`}
+                  onClick={() => setTab(id)}
+                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                    tab === id ? "border-[#36a9ff]/45 bg-[linear-gradient(135deg,#0a1f46_0%,#13386e_100%)] text-white" : "border-transparent text-[#9cb2d2] hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </Card>
 
+          {tab === "gaps" ? (
+            <div role="tabpanel" id="techpanel-gaps" aria-labelledby="techtab-gaps">
+              <CoverageGapsPanel radar={radar} proxyNotes={proxyNotes} />
+            </div>
+          ) : (
+          <div role="tabpanel" id="techpanel-jobs" aria-labelledby="techtab-jobs" className="space-y-6">
+          <div>
+            <p className="max-w-3xl text-sm leading-relaxed text-[#c2d5ee]">
+              Choose a job to see its experiments, then select one for its hardware, fuel and test conditions. Use it to see which hardware and fuels each job relies on, and which jobs rest on only a few experiments.
+            </p>
+            <p data-testid="tech-map-noncausal-banner" className="mt-2 text-xs leading-5 text-[#8ea5c7]">{report.nonCausalNotice}</p>
+          </div>
+
           {/* Interactive Constellation SVG + Domain Switcher */}
-          <div className="grid gap-6 xl:grid-cols-[1.25fr_0.9fr]">
-            <Card className="border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr_0.9fr]">
+            <Card className="min-w-0 border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
-                <span className="font-mono text-[10.5px] font-bold tracking-[.16em] text-[#52b6ff] uppercase">
-                  DOMAIN-TO-INVESTIGATION CONSTELLATION (CLICK PILLAR OR RECORD NODE)
-                </span>
+                <span className="text-sm font-bold text-[#f4f8ff]">Fire-safety jobs and their experiments</span>
                 <div className="flex flex-wrap gap-1.5">
                   {report.clusters.map((cluster) => (
                     <button
@@ -113,9 +134,10 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
                 </div>
               </div>
 
+              <div className="overflow-x-auto rounded-xl" role="region" aria-label="Experiment map (scrolls sideways on small screens)" tabIndex={0}>
               <svg
-                viewBox="0 0 680 340"
-                className="h-auto w-full select-none rounded-xl border border-white/10 bg-[#050d21]/90"
+                viewBox={`0 0 680 ${svgH}`}
+                className="h-auto w-full min-w-[620px] select-none rounded-xl border border-white/10 bg-[#050d21]/90"
                 role="img"
                 aria-label="Metadata grouping constellation connecting Prevention, Detection, and Suppression pillars to indexed investigations"
               >
@@ -160,8 +182,8 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
                 {/* Connecting Lines + Right Column Nodes for Active Cluster */}
                 {currentCluster.records.map((node, idx) => {
                   const total = Math.max(1, currentCluster.records.length);
-                  const spacing = Math.min(48, 280 / total);
-                  const startY = 170 - ((total - 1) * spacing) / 2;
+                  const spacing = 44;
+                  const startY = svgH / 2 - ((total - 1) * spacing) / 2;
                   const ny = startY + idx * spacing;
                   const sy = domainY[currentCluster.domain];
                   const selected = activeNode?.id === node.id;
@@ -201,20 +223,22 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
                   );
                 })}
               </svg>
+              </div>
+              <p className="mt-2 text-[11px] text-[#8ea5c7] sm:hidden">Swipe sideways to see the full map.</p>
 
               <div className="mt-4 rounded-xl border border-white/10 bg-[#050d21]/85 p-3.5 text-xs">
                 <p className="font-mono text-[10px] font-bold tracking-wider text-[#52b6ff] uppercase">
                   {currentCluster.title}
                 </p>
                 <p className="mt-1 leading-relaxed text-[#c9daf2]">{currentCluster.engineeringFocus}</p>
-                <p className="mt-2 font-mono text-[10.5px] text-amber-200">{currentCluster.interpretationCaveat}</p>
+                <p className="mt-2 text-xs leading-5 text-[#9cb2d2]">{currentCluster.interpretationCaveat}</p>
               </div>
             </Card>
 
             {/* Right: Selected Node Relationship & Instrumentation Details */}
-            <Card className="border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md">
-              <p className="font-mono text-[10.5px] font-bold tracking-[.16em] text-[#52b6ff] uppercase">
-                SELECTED RECORD METADATA &amp; INSTRUMENTATION SLOT
+            <Card className="min-w-0 border border-white/10 bg-[#09152e]/85 p-5 backdrop-blur-md">
+              <p className="text-sm font-bold text-[#f4f8ff]">
+                Selected experiment
               </p>
 
               {!activeNode ? (
@@ -235,7 +259,7 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
                       </span>
                     </div>
                     <h2 className="mt-1.5 text-lg font-extrabold text-[#f4f8ff]">{activeNode.name}</h2>
-                    <p className="mt-1 font-mono text-[10px] text-amber-200">{activeNode.provenanceLabel}</p>
+                    {!activeNode.provenanceLabel.startsWith("NASA PSI") && <p className="mt-1 font-mono text-[10px] text-amber-200">{activeNode.provenanceLabel}</p>}
                   </div>
 
                   <dl className="divide-y divide-white/10 rounded-xl border border-white/10 bg-[#050d21]/85 px-4 text-xs">
@@ -260,11 +284,11 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
                       <dd className="text-right font-mono text-[#f4f8ff]">{activeNode.airflowDisplay}</dd>
                     </div>
                     <div className="flex justify-between gap-3 py-2.5">
-                      <dt className="text-[#8ea5c7]">Sensors / Apparatus Channels</dt>
-                      <dd className="text-right font-mono text-amber-200">
+                      <dt className="text-[#8ea5c7]">Measurements</dt>
+                      <dd className="text-right font-semibold text-[#f4f8ff]">
                         {activeNode.measurementChannelCount > 0
-                          ? `${activeNode.measurementChannelCount} measurement channel(s)`
-                          : "NOT REPORTED (0 channels)"}
+                          ? `${activeNode.measurementChannelCount} recorded values`
+                          : "None (metadata only)"}
                       </dd>
                     </div>
                   </dl>
@@ -294,6 +318,10 @@ export function TechnologyMapView({ records }: { records: DemoInvestigation[] })
               )}
             </Card>
           </div>
+          <HardwareMap />
+          <EarthApplications />
+          </div>
+          )}
         </div>
       </main>
     </div>

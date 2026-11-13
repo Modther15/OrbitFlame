@@ -19,21 +19,21 @@ function buildVerifiedSuggestions(records: DemoInvestigation[]): AssistantSugges
   const suggestions: AssistantSuggestion[] = [];
   const byId = new Map(records.map((r) => [r.id, r]));
 
-  if (byId.has("D-001") && byId.has("D-004")) {
+  if (byId.has("PSI-159") && byId.has("PSI-69")) {
     suggestions.push({
-      id: "compare-d001-d004",
+      id: "compare-psi159-psi69",
       category: "MULTI-RECORD COMPARISON",
-      label: "Compare D-001 & D-004 conditions",
-      question: "Compare the recorded oxygen concentration, pressure, and airflow of D-001 and D-004.",
+      label: "Compare PSI-159 & PSI-69 conditions",
+      question: "Compare the recorded oxygen concentration and pressure of PSI-159 and PSI-69.",
     });
   }
 
-  if (byId.has("D-001")) {
+  if (byId.has("PSI-159")) {
     suggestions.push({
-      id: "inspect-d001",
+      id: "inspect-psi159",
       category: "SINGLE INVESTIGATION",
-      label: "Inspect D-001 condition profile",
-      question: "What experimental conditions and gravity environment are reported for D-001?",
+      label: "Inspect PSI-159 (ACME CFI-G) conditions",
+      question: "What oxygen concentrations and pressures are recorded for PSI-159?",
     });
   }
 
@@ -87,7 +87,7 @@ export default async function AssistantPage() {
     (r) => r.provenanceStatus === "NASA_VERIFIED_DATA" && r.source?.verificationStatus === "VERIFIED",
   );
   const dataScope =
-    records.length === 0 ? "EMPTY" : hasVerified ? "VERIFIED INDEXED DATA" : "DEMO DATA";
+    records.length === 0 ? "EMPTY" : hasVerified ? "VERIFIED NASA PSI EXPERIMENTAL DATA" : "DEMO DATA";
 
   return (
     <AssistantView

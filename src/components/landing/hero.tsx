@@ -8,10 +8,10 @@ import { ParticleMorph, type ShapeKey, useReducedMotion } from "./particle-morph
 const HERO_SHAPES: ShapeKey[] = ["droplet", "solidFuel", "enclosure", "aerosol"];
 
 const STATES = [
-  { code: "DROPLET_FLAME", program: "FLEX", text: "A spherical flame is the textbook picture of droplet burning once buoyancy is removed." },
-  { code: "SOLID_FUEL", program: "BASS", text: "Flame spread over thin solid samples in slow, controlled airflow." },
-  { code: "ENCLOSURE_BURN", program: "SAFFIRE", text: "Larger-scale material burns inside an uncrewed spacecraft module." },
-  { code: "SMOKE_AEROSOL", program: "SAME", text: "The smoke particles that spacecraft fire detectors have to sense." },
+  { code: "Droplet flame", program: "FLEX", text: "A spherical flame is the textbook picture of droplet burning once buoyancy is removed." },
+  { code: "Solid fuel", program: "BASS", text: "Flame spread over thin solid samples in slow, controlled airflow." },
+  { code: "Enclosure burn", program: "SAFFIRE", text: "Larger-scale material burns inside an uncrewed spacecraft module." },
+  { code: "Smoke aerosol", program: "SAME", text: "The smoke particles that spacecraft fire detectors have to sense." },
 ];
 
 export function Hero() {
@@ -34,7 +34,7 @@ export function Hero() {
         <h1>
           <span className="sr-only">OrbitFlame — </span>ORBIT
         </h1>
-        <p className="lp-mono lp-hero-kicker">{"Microgravity combustion // research intelligence"}</p>
+        <p className="lp-mono lp-hero-kicker">{"Microgravity Combustion & Fire Safety Intelligence"}</p>
         <p className="lp-hero-sub">Search, compare and cite NASA combustion investigations — with every claim traced back to its source.</p>
         <div className="lp-hero-actions">
           <Link href="/explore" className="lp-btn lp-btn--dark">Explore evidence <ArrowUpRight size={15} /></Link>
@@ -51,7 +51,16 @@ export function Hero() {
         label={`Conceptual particle illustration: ${state.code.replace("_", " ").toLowerCase()}. Not measurement data.`}
       />
 
+      <div className="lp-hero-br">
       <div className="lp-hero-word lp-hero-word--b" aria-hidden="true" data-reveal style={{ ["--d" as string]: "120ms" }}>FLAME</div>
+
+      <div className="lp-hero-caption" aria-live="polite" key={state.code}>
+        <span className="lp-mono lp-tag">{`0${active + 1} // ${state.program}`}</span>
+        <b className="lp-mono">{state.code}</b>
+        <p>{state.text}</p>
+        <small className="lp-mono">Conceptual geometry · not measurement data</small>
+      </div>
+      </div>
 
       <div className="lp-hero-dots" role="tablist" aria-label="Particle illustration">
         {STATES.map((s, i) => (
@@ -61,12 +70,6 @@ export function Hero() {
         ))}
       </div>
 
-      <div className="lp-hero-caption" aria-live="polite" key={state.code}>
-        <span className="lp-mono lp-tag">{`0${active + 1} // ${state.program}`}</span>
-        <b className="lp-mono">{state.code}</b>
-        <p>{state.text}</p>
-        <small className="lp-mono">Conceptual geometry · not measurement data</small>
-      </div>
     </section>
   );
 }

@@ -1,4 +1,8 @@
 import type { DemoInvestigation } from "@/lib/api/schemas";
+import type { InvestigationSummary } from "@/lib/data/summary";
+
+/** Full record or slim list summary (counts precomputed); the matcher only needs measurement counts. */
+type MatchableRecord = DemoInvestigation | InvestigationSummary;
 import { DEMO_WARNING } from "@/lib/demo/dataset";
 import {
   classifyGravityRegime,
@@ -178,7 +182,7 @@ export const CLASSIFICATION_RULES: readonly { level: EvidenceClassification; rul
   },
   {
     level: "ANALOGOUS",
-    rule: "Assigned when at least one domain, material, or compatible physical condition overlaps, but gravity regime differs (e.g., 0 g vs Lunar/Mars partial-g), one or more conditions differ/are missing, measurements are empty, or provenance is DEMO_FIXTURE.",
+    rule: "Assigned when at least one domain, material, or compatible physical condition overlaps, but gravity regime differs (e.g., 0 g vs Lunar/Mars partial-g), one or more conditions differ/are missing, or measurements are empty.",
   },
   {
     level: "MECHANISM_ONLY",
@@ -208,7 +212,7 @@ function tokenize(text: string): string[] {
 }
 
 function classifySingleRecord(
-  record: DemoInvestigation,
+  record: MatchableRecord,
   scenario: MissionScenarioInput,
 ): { matched: MissionMatchResult | null; unavailableReason: string | null } {
   const verified = isRecordVerified(record);
@@ -236,6 +240,13 @@ function classifySingleRecord(
     }
   }
 
+  // effective-gravity HEURISTIC PROXY (flow-equivalent): reported separately; never changes the actual-gravity status above
+  const gi = record.gravityInfo;
+  const proxyBinFor: Record<string, string> = { LUNAR_GRAVITY: "lunar_eq", MARS_GRAVITY: "mars_eq", NORMAL_GRAVITY: "earth_eq" };
+  const wantBin = proxyBinFor[scenario.gravityRegime];
+  if (gi && wantBin && (gi.proxyBins[wantBin] ?? 0) > 0) {
+    gravityExplanation += ` Separately, ${gi.proxyBins[wantBin]} of this record's rows have an effective-gravity PROXY near ${gravityRegimeLabel(scenario.gravityRegime as GravityRegimeClass)} (0 g rows with a forced-flow speed mapped to a buoyancy-equivalent g; HEURISTIC, not measured partial gravity; status above is unchanged).`;
+  }
   parameters.push({
     key: "gravity",
     label: "Gravity Environment",
@@ -428,10 +439,10 @@ function classifySingleRecord(
   });
 
   // 7. Experimental measurements availability check
-  const totalMeasurements = record.testRuns.reduce(
-    (sum, run) => sum + run.measurements.filter((m) => m.missingStatus === "PRESENT").length,
-    0,
-  );
+  const totalMeasurements =
+    "presentMeasurementCount" in record
+      ? record.presentMeasurementCount
+      : record.testRuns.reduce((sum, run) => sum + run.measurements.filter((m) => m.missingStatus === "PRESENT").length, 0);
   const hasMeasurements = totalMeasurements > 0;
   parameters.push({
     key: "measurements",
@@ -585,7 +596,7 @@ const CLASSIFICATION_RANK: Record<EvidenceClassification, number> = {
 };
 
 export function matchMissionScenario(
-  records: DemoInvestigation[],
+  records: MatchableRecord[],
   scenario: MissionScenarioInput,
 ): MissionMatchReport {
   const habitat = MISSION_HABITATS.find((h) => h.id === scenario.habitat) ?? MISSION_HABITATS[0];

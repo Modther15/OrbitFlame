@@ -26,3 +26,4 @@ outputs/
 *.log
 .DS_Store
 Thumbs.db
+.openai_spend.json

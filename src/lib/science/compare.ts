@@ -19,6 +19,8 @@ export type CompareCell = {
   isDemoFixture: boolean;
   isVerified: boolean;
   rawNumericValue: number | null;
+  /** "median 38.6 % [range 12.0-85.0 %]" for PSI investigations with per-row values (same rows as the median). */
+  rangeDisplay?: string | null;
 };
 
 export type CompareRow = {
@@ -54,7 +56,7 @@ function isRecordVerified(record: DemoInvestigation): boolean {
 
 function getRecordProvenanceLabel(status: ProvenanceStatus, verified: boolean): string {
   if (status === "DEMO_FIXTURE") return "DEMO FIXTURE — NOT NASA MEASUREMENTS";
-  if (verified) return "NASA VERIFIED DATA";
+  if (verified) return "NASA PSI record";
   if (status === "NASA_VERIFIED_DATA") return "NASA RECORD — SOURCE UNVERIFIED";
   if (status === "NOT_REPORTED") return "NOT REPORTED";
   return status.replaceAll("_", " ");
@@ -70,13 +72,27 @@ function classifyGravityRegime(raw: string): "MICROGRAVITY" | "PARTIAL_GRAVITY" 
   return "OTHER";
 }
 
+/** Clean display rounding: >= 100 -> 1 decimal, otherwise 2 decimals, trailing zeros dropped (101.7321978173 -> 101.7, 0.3999 -> 0.4). */
+export function fmtN(v: number): string {
+  if (!Number.isFinite(v)) return String(v);
+  return String(Number(v.toFixed(Math.abs(v) >= 100 ? 1 : 2)));
+}
+
 function extractNumericCondition(
   record: DemoInvestigation,
   parameterKey: "oxygen_concentration" | "pressure" | "airflow",
 ): { value: number | null; unit: string | null; siDisplay: string | null; missing: boolean } {
-  const runCondition: Condition | undefined = record.testRuns
-    .flatMap((run) => run.conditions)
-    .find((cond) => cond.parameterKey === parameterKey);
+  // PSI investigations: use the investigation-level median over all test rows (same value the Explore / detail pages show), not an arbitrary first run.
+  if (record.rowStatus === "rows") {
+    const med =
+      parameterKey === "oxygen_concentration" ? record.conditions.oxygenPercent : parameterKey === "pressure" ? record.conditions.pressureKpa : record.conditions.airflowMps;
+    const unit = parameterKey === "oxygen_concentration" ? "%" : parameterKey === "pressure" ? "kPa" : "m/s";
+    if (med === null) return { value: null, unit: null, siDisplay: null, missing: true };
+    const norm = normalizeToKnownSi(med, unit);
+    return { value: med, unit, siDisplay: norm.valueSi !== null && norm.unitSi && (norm.valueSi !== med || norm.unitSi !== unit) ? `${fmtN(norm.valueSi)} ${norm.unitSi}` : null, missing: false };
+  }
+  const allRunConds: Condition[] = record.testRuns.flatMap((run) => run.conditions).filter((cond) => cond.parameterKey === parameterKey);
+  const runCondition: Condition | undefined = allRunConds.find((c) => c.missingStatus === "PRESENT" && c.valueOriginal !== null) ?? allRunConds[0];
 
   if (runCondition) {
     if (runCondition.missingStatus !== "PRESENT" || runCondition.valueOriginal === null) {
@@ -88,7 +104,7 @@ function extractNumericCondition(
       norm.valueSi !== null &&
       norm.unitSi !== null &&
       (norm.valueSi !== runCondition.valueOriginal || norm.unitSi !== unit)
-        ? `${norm.valueSi} ${norm.unitSi}`
+        ? `${fmtN(norm.valueSi)} ${norm.unitSi}`
         : null;
     return {
       value: runCondition.valueOriginal,
@@ -112,7 +128,7 @@ function extractNumericCondition(
     return {
       value: val,
       unit: "kPa",
-      siDisplay: norm.valueSi !== null && norm.unitSi ? `${norm.valueSi} ${norm.unitSi}` : null,
+      siDisplay: norm.valueSi !== null && norm.unitSi ? `${fmtN(norm.valueSi)} ${norm.unitSi}` : null,
       missing: false,
     };
   }
@@ -120,6 +136,20 @@ function extractNumericCondition(
   return val === null
     ? { value: null, unit: null, siDisplay: null, missing: true }
     : { value: val, unit: "m/s", siDisplay: null, missing: false };
+}
+
+/** Full min-max range of the rows behind an investigation-level median, in the display unit of the compare row (O2 %, pressure kPa, airflow m/s). */
+function conditionRangeOf(record: DemoInvestigation, parameterKey: "oxygen_concentration" | "pressure" | "airflow"): [number, number] | null {
+  const cr = record.conditionRanges;
+  if (!cr || record.rowStatus !== "rows") return null;
+  if (parameterKey === "oxygen_concentration") return cr.o2;
+  if (parameterKey === "pressure") return cr.pressureKpa;
+  return cr.airflowCmS ? [cr.airflowCmS[0] / 100, cr.airflowCmS[1] / 100] : null;
+}
+
+/** One rounding rule for medians and ranges: O2 / pressure 1 decimal, airflow (m/s) 3 decimals; trailing zeros kept only for the 1-decimal quantities. */
+function fmtCond(v: number, parameterKey: "oxygen_concentration" | "pressure" | "airflow"): string {
+  return parameterKey === "airflow" ? String(Number(v.toFixed(3))) : v.toFixed(1);
 }
 
 function buildNumericConditionRow(
@@ -131,9 +161,11 @@ function buildNumericConditionRow(
   const extracted = records.map((rec) => {
     const verified = isRecordVerified(rec);
     const data = extractNumericCondition(rec, parameterKey);
+    const rng = data.missing || data.value === null ? null : conditionRangeOf(rec, parameterKey);
     const cell: CompareCell = {
       recordId: rec.id,
-      displayValue: data.missing || data.value === null ? "NOT REPORTED" : String(data.value),
+      rangeDisplay: data.value !== null && rng ? `median ${fmtCond(data.value, parameterKey)}${data.unit ? ` ${data.unit}` : ""} [range ${fmtCond(rng[0], parameterKey)}\u2013${fmtCond(rng[1], parameterKey)}${data.unit ? ` ${data.unit}` : ""}]` : null,
+      displayValue: data.missing || data.value === null ? "NOT REPORTED" : fmtN(data.value),
       unit: data.unit,
       siDisplay: data.siDisplay,
       missingStatus: data.missing ? "NOT_REPORTED" : "PRESENT",
@@ -200,18 +232,25 @@ function buildNumericConditionRow(
       key,
       label,
       status: "EXACT_MATCH",
-      note: `All selected records report ${presentItems[0].data.value}${presentItems[0].data.unit ? ` ${presentItems[0].data.unit}` : ""}.`,
+      note: `All selected records report ${fmtN(presentItems[0].data.value as number)}${presentItems[0].data.unit ? ` ${presentItems[0].data.unit}` : ""}.`,
       cells,
     };
   }
 
-  const minVal = Math.min(...comparableNumbers);
-  const maxVal = Math.max(...comparableNumbers);
+  // Medians are shown in the cells' original unit (same unit as the ranges below); the SI-normalised values are used only if the units differ between records.
+  const sameUnit = presentItems.every((e) => e.data.unit === first.unit);
+  const shownNumbers = sameUnit ? presentItems.map((e) => e.data.value as number) : comparableNumbers;
+  if (sameUnit && first.unit) sharedUnit = first.unit;
+  const minVal = Math.min(...shownNumbers);
+  const maxVal = Math.max(...shownNumbers);
+  // Same rows as the matrix: per-investigation medians (the cells) AND the full min-max over every test row of the selected investigations.
+  const rngs = records.map((r) => conditionRangeOf(r, parameterKey)).filter((x): x is [number, number] => x !== null);
+  const overall = rngs.length ? `; overall range over all test rows ${fmtCond(Math.min(...rngs.map((x) => x[0])), parameterKey)}\u2013${fmtCond(Math.max(...rngs.map((x) => x[1])), parameterKey)}${sharedUnit ? ` ${sharedUnit}` : ""}` : "";
   return {
     key,
     label,
     status: "DIFFERENT",
-    note: `Values span ${minVal} to ${maxVal}${sharedUnit ? ` ${sharedUnit}` : ""} across selected investigations.`,
+    note: `Per-investigation medians span ${fmtCond(minVal, parameterKey)} to ${fmtCond(maxVal, parameterKey)}${sharedUnit ? ` ${sharedUnit}` : ""}${overall}`,
     cells,
   };
 }
@@ -376,8 +415,8 @@ function buildMeasurementsDerivedRow(
         ),
       ];
     } else {
-      // Experimental hardware is only extracted when explicitly present in source metadata (never inferred from family acronym).
-      extractedValues = [];
+      // Experimental hardware is taken ONLY from the PSI investigation record (experimentHardware); never inferred from the family acronym.
+      extractedValues = rec.hardware && rec.hardware.trim() ? [rec.hardware.trim()] : [];
     }
 
     const isPresent = extractedValues.length > 0;
@@ -557,7 +596,7 @@ export function buildComparisonSummary(records: DemoInvestigation[], rows: Compa
       shared.push(`${row.label}: ${row.note}`);
     } else if (row.status === "DIFFERENT") {
       const breakdown = row.cells
-        .map((c) => `${c.recordId}=${c.unit ? `${c.displayValue} ${c.unit}` : c.displayValue}`)
+        .map((c) => `${c.recordId}=${c.rangeDisplay ?? (c.unit ? `${c.displayValue} ${c.unit}` : c.displayValue)}`)
         .join("; ");
       differences.push(`${row.label}: ${row.note} (${breakdown}).`);
     } else if (row.status === "PARTIALLY_COMPARABLE") {
